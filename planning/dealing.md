@@ -1,4 +1,4 @@
-# P2P Poker: Trustless Card Dealing Algorithm
+# Card Dealing
 
 ## The Algorithm in Detail
 
