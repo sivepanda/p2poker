@@ -56,9 +56,8 @@ The last node to decrypt someone else's cards (C in this case) **broadcasts `[A-
 
 ```
 [ABC-encrypted]  →  B lifts  →  [AC-encrypted]  →  C lifts  →  [A-encrypted] -> A (can decrypt)
-                                                                       ↑
-                                                    [A-encrypted] BROADCASTED TO ALL BY C
-                                                             (before sending to A)
+                                                                     ↑
+                                                  [A-encrypted] BROADCASTED TO ALL BY C
 ```
 
 
