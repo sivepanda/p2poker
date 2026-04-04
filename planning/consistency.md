@@ -104,7 +104,7 @@ abort_round(round_id):
 
 ### Log Consistency Auditing
 
-Optionally, at natural game boundaries (such as the end of a hand), players can perform a consistency audit. Each player computes a keyed hash over their full serialized log using a pre-shared key and publishes the resulting digest. If all digests match, we can confirm that every player's log is identical without needing to exchange and diff full logs. This is primarily useful for catching accidental state divergence: corrupted writes, missed commits, validation bugs, rather than adversarial tampering, since the key is shared amongst all players.
+Optionally, at natural game boundaries (such as the end of a hand), players can perform a consistency audit. Each player computes a keyed hash over their full serialized log using a pre-shared key and publishes the resulting digest. If all digests match, we can confirm that every player's log is identical without needing to exchange and diff full logs. This is primarily useful for catching accidental state divergence: corrupted writes, missed commits, validation bugs, rather than adversarial tampering, since the key is shared amongst all players. This could also be implemented as a secondary verification for a commit in [log consistency auditing](#log-consistency-auditing), where, like in Cryptocurrency, a "header" is appened to a proposed commit that contains the proposer's keyed hash, then verified by every other player before committing that particular move.
 
 ```
 audit_consistency(local_log, shared_key):
