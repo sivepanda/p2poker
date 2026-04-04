@@ -8,6 +8,7 @@
 - Each player generates a **fresh ephemeral keypair** for every game, bound to their long-term identity:
   > *"I am A (signed with my long-term key), and my ephemeral public key for this game is `pk_A`"*
 - This ensures forward secrecy — past games cannot be decrypted even if a long-term key is later compromised.
+- Every game is played with a unique set of private keys for each player
 
 ---
 
@@ -16,13 +17,16 @@
 1. Player A starts with a plaintext array of 52 cards.
 2. Each player in order (A → B → C) does the following:
    - Shuffles the array
-   - Encrypts every card with their own ephemeral private key using a **commutative encryption scheme** (e.g. SRA), so that layers can be removed in any order
+   - Encrypts every card with their own private key using a **commutative encryption scheme** (e.g. SRA), so that layers can be removed in any order
 3. After C encrypts, the deck has 3 layers of encryption: `[ABC-encrypted]`
 4. C broadcasts the fully-encrypted deck to all players. Everyone stores this as the canonical deck.
+   - At this point, every played has a shuffled array of 52 cards, under three layes of encyrption
 
 ---
 
 ### Phase 2: Dealing
+
+In Poker, each player starts off with two cards, drawn from a shared deck. Therefore, each player must be asigned two unique indices, which represent the index of their two cards in the deck/array.
 
 Card indices are pre-assigned by position in the order:
 - A receives cards at index `0, 1`
@@ -35,21 +39,39 @@ To deal cards to Player X, the other players must each lift their encryption lay
 **Example — dealing cards `0, 1` to Player A:**
 
 ```
-[ABC-encrypted]  →  B lifts  →  [AC-encrypted]  →  C lifts  →  [A-encrypted]
+//A begins a request to B to remove the encryption on deck[0] and deck[1]
+
+[ABC-encrypted]  →  B lifts  →  [AC-encrypted]  →  C lifts  →  [A-encrypted] -> A (can decrypt)
+
+When the cards get back to A, they are only [A-encrypted] meaning A can reveal their cards
+
+//NOTE: No-one else ever saw A's unencrypted cards
+
+//NOTE: A can never decrypt any other cards (say at index 9). A doesn't own that index
+```
+
+To make sure A can never lie about their cards in the future, an additional step is performed:
+
+The last node to decrypt someone else's cards (C in this case) **broadcasts `[A-encrypted]` to all peers** and waits for acknowledgement from the network before forwarding the packet to A.
+
+```
+[ABC-encrypted]  →  B lifts  →  [AC-encrypted]  →  C lifts  →  [A-encrypted] -> A (can decrypt)
                                                                        ↑
-                                                             COMMIT PUBLISHED HERE
+                                                    [A-encrypted] BROADCASTED TO ALL BY C
                                                              (before sending to A)
 ```
 
-The last node to decrypt (C in this case) **broadcasts `[A-encrypted]` to all peers** and waits for acknowledgement from the network before forwarding the packet to A.
 
-A then decrypts with their own private key to reveal their cards.
+`[A-encrypted]`, `[B-encrypted]`, and `[C-encrypted]` is public knowledge, stored by A, B, and C
+
 
 ---
 
 ### Phase 3: Gameplay
 
-Players hold their cards privately. No one else can read them — only the player who holds the final encryption layer can decrypt.
+Players hold their cards privately. The game goes on, as players raise, fold, check, and call...
+
+TODO: Develop the logic for logging all operations as they go around the ring.
 
 ---
 
@@ -57,9 +79,9 @@ Players hold their cards privately. No one else can read them — only the playe
 
 When a player (say A) claims to have won with cards `x` and `y`:
 
-1. A publishes their ephemeral private key.
-2. Any player can take the committed `[A-encrypted]` cards (stored before the game ended) and decrypt them using A's published key.
-3. If the result matches A's claimed cards, the hand is verified. If not, fraud is provable.
+1. A publishes their private key.
+2. Any player can take their `[A-encrypted]` cards (stored before the game started) and decrypt them using A's published key.
+3. If the result matches A's claimed cards, the hand is verified. If not, fraud is provable. A lied about their cards
 
 ---
 
@@ -68,20 +90,21 @@ When a player (say A) claims to have won with cards `x` and `y`:
 ```
 SETUP       Each player generates ephemeral keypair, signs with long-term key
 
-SHUFFLE     A shuffles + encrypts → B shuffles + encrypts → C shuffles + encrypts
-            C broadcasts [ABC-encrypted] deck to all
+SHUFFLE     A shuffles + encrypts → B shuffles + encrypts → ... ->  Z shuffles + encrypts
+            Z broadcasts [ABC..Z-encrypted] deck to all
 
-DEAL        For each player X:
+DEAL        For each player, say Y:
+              Start a request around the ring for everyone to decrypt array[index y1, index y2]
               Other nodes peel their layers one by one
-              Last node broadcasts [X-encrypted] cards to all peers
+              Last node [X] broadcasts [Y-encrypted] cards to all peers
               Network ACKs the commitment
-              Last node forwards to X
-              X decrypts with private key → plaintext cards
+              Y decrypts with private key → plaintext cards
 
 PLAY        Game proceeds; cards remain private
 
-SHOWDOWN    Winning player publishes ephemeral private key
-            Anyone verifies: decrypt([X-encrypted commitment]) == claimed cards
+SHOWDOWN    Winning [Y] player publishes private key along with their claimed cards
+            Anyone verifies: decrypt([Y-encrypted]) == claimed cards
+            Alternatively encypt(claimed cards) = [Y-encrypted]
 ```
 
 ---
@@ -94,27 +117,23 @@ SHOWDOWN    Winning player publishes ephemeral private key
 
 In traditional online poker, a central server shuffles the deck. Players must trust that the server is honest and not rigging the order.
 
-**Solution:** Every player shuffles and encrypts the deck before it is used. No single player controls the final order — the deck is the result of all shuffles combined. A cheating player can only influence the outcome if *all* other players also cheat.
+In a p2p network, how do we guarantee that (a) the cards are shuffled (b) no one sees anyone else's cards (c) everyone still draws from a shared deck
+
+**Solution:** Every player shuffles and encrypts the deck before it is used. No single player controls the final order — the deck is the result of all shuffles combined. No one can see anyone else's cards because they are always in an encrypted state until their reach their owner. No one shares the same cards because everyone draws from different parts of the deck.
 
 ---
 
 ### Problem 2: A player could claim different cards at showdown than they actually held.
 
-Without a commitment, a player could wait to see the outcome, then lie about which cards they held to claim a win.
+If player A is the only one who saw their cards, couldnt they just lie?
 
 **Solution:** Before a player receives their decrypted cards, the last intermediary node broadcasts a commitment — the one-layer-encrypted version of those cards — to the entire network. This is published *before* the player can see their cards. At showdown, the player's revealed private key must decrypt the stored commitment to exactly their claimed cards. The commitment is made before the player knows their hand, so retroactive lying is impossible.
 
----
 
-### Problem 3: The node publishing the commitment could lie about what it broadcasts.
-
-The last decrypting node (e.g. C for Player A's cards) both creates the commitment and forwards the packet to A. What stops C from publishing a fake commitment and sending A different cards?
-
-**Solution:** A can detect this immediately. After decrypting their cards, A re-encrypts with their own public key and checks whether the result matches what C published to the network. If C sent A a different packet than what was broadcast, the mismatch is cryptographically provable. A can reveal their private key to the network purely for dispute purposes, demonstrating the fraud without any reliance on trust.
 
 ---
 
-### Problem 4: A compromised game session exposes all past games.
+### Problem 3: A compromised game session exposes all past games.
 
 If a player's private key is stolen or leaked, an attacker could potentially decrypt recordings of old games.
 
@@ -126,12 +145,12 @@ If a player's private key is stolen or leaked, an attacker could potentially dec
 
 If a node in the decryption chain (e.g. B) refuses to lift their encryption layer, the deal stalls indefinitely.
 
-**Solution:** The protocol requires each decryption step to complete within a defined timeout window. If a node fails to respond in time, the network can flag a liveness fault and apply a penalty or abandon the round. The committed deck (broadcast at the end of the shuffle phase) also serves as evidence of who held up the game.
+**Solution:** The protocol requires each decryption step to complete within a defined timeout window. If a node fails to respond in time, the network can flag a liveness fault and apply a penalty or abandon the round. All actions are broadcasted, but not all broadcasts need an ACK to proceed to the next step. This way, it become possible for good note-takers to figure out who is stalling. 
 
----
 
-### Problem 6: A player could collude with others to peek at an opponent's cards.
+### Conclusion
 
-In a 3-player game, if B and C cooperate, they both hold encryption layers over A's cards during the deal phase. Together they could reconstruct A's plaintext cards before A decrypts them.
+The system is set up so that everyone can securely get their cards (in just 2 round trips) and can verify the truth of all claims
 
-**Solution:** This is a known fundamental limitation of mental poker with no trusted third party. Any N-1 players can collude against the Nth. The algorithm does not eliminate this risk but makes collusion *detectable after the fact* via the commitment and key publication steps. Reputation systems, stake-based deterrents, or larger player pools can reduce the practical risk.
+Verification of truth is never a burden on one person. Everyone has enough information to verify. Truth is a property of the network.
+
