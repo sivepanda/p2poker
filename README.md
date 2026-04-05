@@ -1,4 +1,4 @@
-# Peer 2 Peer Poker
+# Peer-to-Peer Poker
 
 A fully decentralized, trustless multiplayer Texas Hold'em poker game played over a peer-to-peer network with no central server or authority.
 
@@ -16,10 +16,11 @@ Players connect directly to each other in a ring topology and use cryptographic 
 
 ## Key Properties
 
-- **No central server** — all game logic is executed and verified by every participant
-- **Turn-based simplicity** — only one player acts at a time, so ordering is straightforward and concurrency is limited
-- **Forward secrecy** — ephemeral keypairs per game ensure past sessions cannot be decrypted if a long-term key is compromised
-- **Tamper-evident** — any attempt to forge, replay, reorder, or deny actions is cryptographically detectable
+- **No central server** - all game logic is executed and verified by every participant
+- **Turn-based simplicity** - only one player acts at a time, so ordering is straightforward and concurrency is limited
+- **Forward secrecy** - ephemeral keypairs per game ensure past sessions cannot be decrypted if a long-term key is compromised
+- **Tamper-evident** - any attempt to forge, replay, reorder, or deny actions is cryptographically detectable
+- **UI Plugin Interface** - the core of the service/daemon is agnostic to what the frontend runtime is. There is simply an API contract where the service can direct the user facing client to "render a card being passed to the player," meaning that anyone can bundle or write their own "frontend" to their liking.
 
 ## Planning & Design
 
