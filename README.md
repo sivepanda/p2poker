@@ -4,7 +4,7 @@ A fully decentralized, trustless multiplayer Texas Hold'em poker game played ove
 
 ## Overview
 
-Players connect directly to each other in a ring topology and use cryptographic protocols to ensure fair play without relying on a trusted third party. The system handles three core challenges:
+Players connect directly to each other and use cryptographic protocols to ensure fair play without relying on a trusted third party. The system handles three core challenges:
 
 - **Trustless Card Dealing** — uses commutative encryption (SRA) with fresh ephemeral keypairs per game so that the deck is collectively shuffled and encrypted by all players. No single player controls the deck order, and no player can see another's cards. At showdown, players publish their private keys to allow cryptographic verification of claimed hands.
 
