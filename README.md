@@ -1,5 +1,18 @@
 # Peer-to-Peer Poker
 
+### To Run Prototype
+```
+//from p2poker
+
+make run
+
+//or
+
+cd prototype
+go run .
+
+```
+
 A fully decentralized, trustless multiplayer Texas Hold'em poker game played over a peer-to-peer network with no central server or authority.
 
 ## Overview
