@@ -1,10 +1,10 @@
-.PHONY: run build clean
-
-run:
-	cd prototype && go run .
+.PHONY: sim build clean
 
 build:
-	cd prototype && go build -o ../app .
+	go build -o app ./cmd/sim
+
+sim:
+	go run ./cmd/sim
 
 clean:
 	rm -f app

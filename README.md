@@ -1,6 +1,6 @@
 # Peer-to-Peer Poker
 
-### To Run Prototype
+### To Run Simulation
 ```
 //from p2poker
 
@@ -8,8 +8,7 @@ make run
 
 //or
 
-cd prototype
-go run .
+go run ./cmd/sim
 
 ```
 
