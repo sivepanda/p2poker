@@ -38,5 +38,5 @@ Players connect directly to each other and use cryptographic protocols to ensure
 
 Detailed algorithm specifications and security analysis can be found in the planning directory:
 
-- [Trustless Card Dealing Algorithm](planning/dealing.md)
-- [Round Consistency Methods](planning/consistency.md)
+- [Trustless Card Dealing Algorithm](docs/dealing.md)
+- [Round Consistency Methods](docs/consistency.md)
