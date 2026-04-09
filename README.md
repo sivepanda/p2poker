@@ -1,34 +1,4 @@
-# Peer-to-Peer Poker
-
-### To Run Simulation
-```
-//from p2poker
-
-make run
-
-//or
-
-go run ./cmd/sim
-
-```
-
-### To Run Dispatch + Nodes (Framework)
-
-```
-// terminal 1
-go run ./cmd/dispatch -addr :9000
-
-// terminal 2
-go run ./cmd/node -dispatch 127.0.0.1:9000 -create -session table-1 -list-peers
-
-// terminal 3
-go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -list-peers
-
-// terminal 2, send a message to terminal 3's node id
-go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -send-to node-2 -body "hello from node-1"
-```
-
-The dispatch service manages session membership and lease heartbeats. Nodes can relay arbitrary gob-encoded payload structs through dispatch using message type routing.
+# Peer-to-Peer Poker 
 
 A fully decentralized, trustless multiplayer Texas Hold'em poker game played over a peer-to-peer network with no central server or authority.
 
@@ -45,16 +15,70 @@ Players connect directly to each other and use cryptographic protocols to ensure
 - **Liveness & Fault Tolerance** — configurable timeouts detect unresponsive players, who are auto-folded after repeated failures to prevent stalling.
 
 ## Key Properties
-
 - **No central server** - all game logic is executed and verified by every participant
 - **Turn-based simplicity** - only one player acts at a time, so ordering is straightforward and concurrency is limited
 - **Forward secrecy** - ephemeral keypairs per game ensure past sessions cannot be decrypted if a long-term key is compromised
 - **Tamper-evident** - any attempt to forge, replay, reorder, or deny actions is cryptographically detectable
 - **UI Plugin Interface** - the core of the service/daemon is agnostic to what the frontend runtime is. There is simply an API contract where the service can direct the user facing client to "render a card being passed to the player," meaning that anyone can bundle or write their own "frontend" to their liking.
 
+## Project Structure
+
+The project follows Go conventions inspired by Kubernetes and Docker layouts. See [docs/package_structure.md](docs/package_structure.md) for details.
+
+```
+cmd/
+  dispatch/    # Dispatch server executable — central discovery for peer lookups
+  node/        # Node executable — a single player's peer process
+  sim/         # Simulation executable — local game simulation
+internal/
+  crypto/      # Cryptographic hashing, signing, and decryption (deck & log)
+  dispatch/    # Dispatch server logic
+  peer/        # Peer representation and management
+  protocol/    # Game protocol definitions
+  sim/         # Simulation logic
+  transport/   # Network transport layer
+```
+
+## Running
+
+### Simulation
+
+```sh
+make sim
+# or
+go run ./cmd/sim
+```
+
+### Dispatch + Nodes (P2P Framework)
+
+```sh
+# Terminal 1 — start the dispatch server
+go run ./cmd/dispatch -addr :9000
+
+# Terminal 2 — create a session and join as the first node
+go run ./cmd/node -dispatch 127.0.0.1:9000 -create -session table-1 -list-peers
+
+# Terminal 3 — join the existing session as a second node
+go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -list-peers
+
+# Send a message from one node to another
+go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -send-to node-2 -body "hello from node-1"
+```
+
+### Build All
+
+```sh
+make build   # produces ./app, ./dispatch, ./node binaries
+make clean   # removes built binaries
+```
+
 ## Planning & Design
 
-Detailed algorithm specifications and security analysis can be found in the planning directory:
+Detailed algorithm specifications and security analysis can be found in the docs directory:
 
-- [Trustless Card Dealing Algorithm](docs/dealing.md)
-- [Round Consistency Methods](docs/consistency.md)
+- [Trustless Card Dealing Algorithm](docs/whitepaper/dealing.md)
+- [Round Consistency Methods](docs/whitepaper/consistency.md)
+
+
+*This project was made as a final project for Computer Science 390.03, Distributed Systems at Duke University, taught by Dr. Jeff Chase in Spring 2026.*  
+**Siven Panda, Ahbab Abeer, Chirag Biswas**
