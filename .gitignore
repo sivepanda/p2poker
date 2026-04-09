@@ -1,9 +1,9 @@
-# JetBrains IDE
 .idea/
 
-# bs go file
 *.iml
 
-# Build artifacts
 app
+dispatch
+node
+sim
 prototype/main

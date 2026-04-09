@@ -7,8 +7,8 @@ import (
 )
 
 type Key struct {
-	K    *big.Int
-	KInv *big.Int
+	Exponent        *big.Int
+	InverseExponent *big.Int
 }
 
 func Shuffle(deck [][]byte) error {
@@ -30,7 +30,7 @@ func EncryptDeck(deck [][]byte, key *Key, prime *big.Int) [][]byte {
 	encrypted := make([][]byte, len(deck))
 	for i, card := range deck {
 		m := new(big.Int).SetBytes(card)
-		c := new(big.Int).Exp(m, key.K, prime)
+		c := new(big.Int).Exp(m, key.Exponent, prime)
 		encrypted[i] = c.Bytes()
 	}
 
@@ -39,7 +39,7 @@ func EncryptDeck(deck [][]byte, key *Key, prime *big.Int) [][]byte {
 
 func DecryptCard(encryptedCard []byte, key *Key, prime *big.Int) []byte {
 	c := new(big.Int).SetBytes(encryptedCard)
-	m := new(big.Int).Exp(c, key.KInv, prime)
+	m := new(big.Int).Exp(c, key.InverseExponent, prime)
 	return m.Bytes()
 }
 
@@ -72,6 +72,6 @@ func GenerateKey(prime *big.Int) (*Key, error) {
 			continue
 		}
 
-		return &Key{K: k, KInv: kInv}, nil
+		return &Key{Exponent: k, InverseExponent: kInv}, nil
 	}
 }

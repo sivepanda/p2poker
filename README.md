@@ -12,6 +12,24 @@ go run ./cmd/sim
 
 ```
 
+### To Run Dispatch + Nodes (Framework)
+
+```
+// terminal 1
+go run ./cmd/dispatch -addr :9000
+
+// terminal 2
+go run ./cmd/node -dispatch 127.0.0.1:9000 -create -session table-1 -list-peers
+
+// terminal 3
+go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -list-peers
+
+// terminal 2, send a message to terminal 3's node id
+go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -send-to node-2 -body "hello from node-1"
+```
+
+The dispatch service manages session membership and lease heartbeats. Nodes can relay arbitrary gob-encoded payload structs through dispatch using message type routing.
+
 A fully decentralized, trustless multiplayer Texas Hold'em poker game played over a peer-to-peer network with no central server or authority.
 
 ## Overview
