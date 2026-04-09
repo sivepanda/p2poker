@@ -3,7 +3,7 @@
 *.iml
 
 app
-dispatch
-node
-sim
+/dispatch
+/node
+/sim
 prototype/main
