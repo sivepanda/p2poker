@@ -72,7 +72,10 @@ func (s *Server) Run(ctx context.Context) error {
 	return nil
 }
 
+<<<<<<< HEAD
 // GetSessions reports every active session ID.
+=======
+>>>>>>> fe6fe75 (feat: add client gRPC layer for UI directives)
 func (s *Server) GetSessions(ctx context.Context) []string {
 	var sessionMap []string
 
@@ -83,12 +86,22 @@ func (s *Server) GetSessions(ctx context.Context) []string {
 
 }
 
+<<<<<<< HEAD
 // GetUsersInSession lists the members of a session.
+=======
+// Returns the list of members that are in a session.
+>>>>>>> fe6fe75 (feat: add client gRPC layer for UI directives)
 func (s *Server) GetUsersInSession(id string) map[string]struct{} {
 	return s.sessions[id].members
 }
 
+<<<<<<< HEAD
 // ListenAndServe starts serving in background and returns the bound address.
+=======
+// ListenAndServe binds the listener, starts serving in the background, and
+// returns the actual listen address. Useful when the configured address uses
+// port 0.
+>>>>>>> fe6fe75 (feat: add client gRPC layer for UI directives)
 func (s *Server) ListenAndServe(ctx context.Context) (string, error) {
 	ln, err := net.Listen("tcp", s.cfg.Address)
 	if err != nil {

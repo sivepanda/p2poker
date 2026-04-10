@@ -119,6 +119,7 @@ func main() {
 		fmt.Printf("frontend gRPC enabled on %s\n", *rpcAddr)
 	} else {
 		fmt.Println("frontend gRPC disabled (set -rpc-addr to enable)")
+		fmt.Printf("gRPC server listening on %s\n", *rpcAddr)
 	}
 
 	<-ctx.Done()
