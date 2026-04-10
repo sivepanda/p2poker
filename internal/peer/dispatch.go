@@ -48,6 +48,17 @@ func (n *Node) JoinSession(ctx context.Context, sessionID string) error {
 	return nil
 }
 
+func (n *Node) ListSessions(ctx context.Context) ([]string, error) {
+	resp, err := n.dispatchRequest(ctx, protocol.Frame{Kind: protocol.KindListSessionsReq})
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Success {
+		return nil, errors.New(resp.Error)
+	}
+	return resp.SessionIDs, nil
+}
+
 func (n *Node) Heartbeat(ctx context.Context) error {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{Kind: protocol.KindHeartbeatReq})
 	if err != nil {

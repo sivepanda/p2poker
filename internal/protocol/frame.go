@@ -9,6 +9,8 @@ const (
 	KindJoinSessionResp   = "join_session_resp"
 	KindListPeersReq      = "list_peers_req"
 	KindListPeersResp     = "list_peers_resp"
+	KindListSessionsReq   = "list_sessions_req"
+	KindListSessionsResp  = "list_sessions_resp"
 	KindHeartbeatReq      = "heartbeat_req"
 	KindHeartbeatResp     = "heartbeat_resp"
 )
@@ -25,5 +27,6 @@ type Frame struct {
 	Error            string
 	PeerIDs          []string
 	PeerAddresses    []string
+	SessionIDs       []string
 	LeaseExpiresUnix int64
 }

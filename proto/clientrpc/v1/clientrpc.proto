@@ -1,0 +1,78 @@
+syntax = "proto3";
+package clientrpc.v1;
+option go_package = "github.com/sivepanda/p2poker/internal/clientrpc/clientrpcpb";
+
+service PokerNode {
+  // Lobby
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc JoinSession(JoinSessionRequest) returns (JoinSessionResponse);
+  rpc ListPeers(ListPeersRequest) returns (ListPeersResponse);
+  rpc ConnectPeers(ConnectPeersRequest) returns (ConnectPeersResponse);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+
+  // Node
+  rpc GetNodeInfo(GetNodeInfoRequest) returns (GetNodeInfoResponse);
+
+  // Events — server-side stream, frontend subscribes once
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream Event);
+}
+
+// --- Lobby ---
+
+message CreateSessionRequest {
+  string session_id = 1;
+}
+message CreateSessionResponse {
+  string session_id = 1;
+}
+
+message JoinSessionRequest {
+  string session_id = 1;
+}
+message JoinSessionResponse {
+  string session_id = 1;
+}
+
+message ListPeersRequest {}
+message ListPeersResponse {
+  repeated PeerInfo peers = 1;
+}
+message PeerInfo {
+  string id = 1;
+  string addr = 2;
+}
+
+message ConnectPeersRequest {}
+message ConnectPeersResponse {
+  int32 connected_count = 1;
+}
+
+message ListSessionsRequest {}
+message ListSessionsResponse {
+  repeated string session_ids = 1;
+}
+
+// --- Node ---
+
+message GetNodeInfoRequest {}
+message GetNodeInfoResponse {
+  string node_id = 1;
+  string listen_addr = 2;
+  string session_id = 3;
+}
+
+// --- Events ---
+
+message SubscribeEventsRequest {}
+
+message Event {
+  oneof event {
+    PeerMessageEvent peer_message = 1;
+  }
+}
+
+message PeerMessageEvent {
+  string from = 1;
+  string message_type = 2;
+  bytes payload = 3;
+}

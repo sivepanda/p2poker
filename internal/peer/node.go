@@ -46,6 +46,7 @@ type Node struct {
 	requestCounter uint64
 }
 
+// Connect registers the node with dispatch and starts its listeners.
 func Connect(ctx context.Context, cfg Config) (*Node, error) {
 	if cfg.DispatchAddr == "" {
 		return nil, errors.New("dispatch address must be set")
@@ -73,24 +74,24 @@ func Connect(ctx context.Context, cfg Config) (*Node, error) {
 		PeerAddr: ln.Addr().String(),
 	}); err != nil {
 		_ = ln.Close()
-		_ = rawConn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("register request: %w", err)
 	}
 
 	resp, err := conn.Receive()
 	if err != nil {
 		_ = ln.Close()
-		_ = rawConn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("register response: %w", err)
 	}
 	if resp.Kind != protocol.KindRegisterResp {
 		_ = ln.Close()
-		_ = rawConn.Close()
+		_ = conn.Close()
 		return nil, errors.New("unexpected register response kind")
 	}
 	if !resp.Success {
 		_ = ln.Close()
-		_ = rawConn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("register failed: %s", resp.Error)
 	}
 
@@ -111,20 +112,24 @@ func Connect(ctx context.Context, cfg Config) (*Node, error) {
 	return n, nil
 }
 
+// ID returns the local node identifier.
 func (n *Node) ID() string {
 	return n.id
 }
 
+// ListenAddr exposes the node's peer address.
 func (n *Node) ListenAddr() string {
 	return n.peerAddr
 }
 
+// SessionID returns the node's current session String.
 func (n *Node) SessionID() string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.session
 }
 
+// Close kills the node and its network resources.
 func (n *Node) Close() error {
 	_ = n.listener.Close()
 

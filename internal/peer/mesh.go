@@ -10,6 +10,7 @@ import (
 	"github.com/sivepanda/p2poker/internal/transport"
 )
 
+// ConnectToPeers dials every peer announced by dispatch.
 func (n *Node) ConnectToPeers(ctx context.Context) error {
 	peers, err := n.ListPeers(ctx)
 	if err != nil {

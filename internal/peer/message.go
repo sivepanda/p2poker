@@ -24,6 +24,7 @@ type PeerInfo struct {
 	Addr string
 }
 
+// Send transmits a typed payload to the named peer.
 func (n *Node) Send(targetID, messageType string, payload any) error {
 	buf, err := encodePayload(payload)
 	if err != nil {
@@ -45,6 +46,7 @@ func (n *Node) Send(targetID, messageType string, payload any) error {
 	})
 }
 
+// Broadcast sends a typed payload to all peers.
 func (n *Node) Broadcast(messageType string, payload any) error {
 	buf, err := encodePayload(payload)
 	if err != nil {
@@ -70,12 +72,14 @@ func (n *Node) Broadcast(messageType string, payload any) error {
 	return nil
 }
 
+// Handle registers a handler for the given message type.
 func (n *Node) Handle(messageType string, handler Handler) {
 	n.handlersMu.Lock()
 	defer n.handlersMu.Unlock()
 	n.handlers[messageType] = handler
 }
 
+// ListPeers asks dispatch for the current peer list.
 func (n *Node) ListPeers(ctx context.Context) ([]PeerInfo, error) {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{Kind: protocol.KindListPeersReq})
 	if err != nil {
@@ -92,6 +96,7 @@ func (n *Node) ListPeers(ctx context.Context) ([]PeerInfo, error) {
 	return peers, nil
 }
 
+// Decode deserializes the payload of a peer message.
 func Decode[T any](msg Message) (T, error) {
 	var out T
 	if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&out); err != nil {

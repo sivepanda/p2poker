@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sivepanda/p2poker/internal/clientrpc"
 	"github.com/sivepanda/p2poker/internal/peer"
 )
 
@@ -27,6 +28,7 @@ func main() {
 	broadcast := flag.Bool("broadcast", false, "broadcast to all peers in session")
 	body := flag.String("body", "hello", "message body for chat payload")
 	listPeers := flag.Bool("list-peers", false, "print peer list after joining session")
+	rpcAddr := flag.String("rpc-addr", "127.0.0.1:50051", "gRPC listen address for frontend clients (set empty to disable)")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -41,9 +43,13 @@ func main() {
 		fmt.Printf("connect failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer node.Close()
+	defer func() {
+		if err := node.Close(); err != nil {
+			fmt.Printf("close failed: %v\n", err)
+		}
+	}()
 
-	fmt.Printf("connected as %s (listening on %s)\n", node.ID(), node.ListenAddr())
+	fmt.Printf("connected as %s (peer listening on %s)\n", node.ID(), node.ListenAddr())
 
 	node.Handle("chat", func(msg peer.Message) {
 		decoded, err := peer.Decode[ChatMessage](msg)
@@ -102,6 +108,17 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("broadcast chat sent")
+	}
+
+	if *rpcAddr != "" {
+		go func() {
+			if err := clientrpc.Run(ctx, *rpcAddr, node); err != nil {
+				fmt.Printf("rpc server failed: %v\n", err)
+			}
+		}()
+		fmt.Printf("frontend gRPC enabled on %s\n", *rpcAddr)
+	} else {
+		fmt.Println("frontend gRPC disabled (set -rpc-addr to enable)")
 	}
 
 	<-ctx.Done()

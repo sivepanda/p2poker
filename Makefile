@@ -1,4 +1,4 @@
-.PHONY: sim build dispatch node clean
+.PHONY: sim build dispatch node clean proto
 
 build:
 	go build -o app ./cmd/sim
@@ -13,6 +13,11 @@ dispatch:
 
 node:
 	go run ./cmd/node
+
+proto:
+	protoc --go_out=. --go_opt=module=github.com/sivepanda/p2poker \
+	       --go-grpc_out=. --go-grpc_opt=module=github.com/sivepanda/p2poker \
+	       proto/clientrpc/v1/clientrpc.proto
 
 clean:
 	rm -f app

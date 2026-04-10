@@ -11,6 +11,7 @@ type Key struct {
 	InverseExponent *big.Int
 }
 
+// Shuffle randomizes the order of cards in place.
 func Shuffle(deck [][]byte) error {
 	n := len(deck)
 	for i := n - 1; i > 0; i-- {
@@ -26,6 +27,7 @@ func Shuffle(deck [][]byte) error {
 	return nil
 }
 
+// EncryptDeck raises every card to the exponent under the prime.
 func EncryptDeck(deck [][]byte, key *Key, prime *big.Int) [][]byte {
 	encrypted := make([][]byte, len(deck))
 	for i, card := range deck {
@@ -37,12 +39,14 @@ func EncryptDeck(deck [][]byte, key *Key, prime *big.Int) [][]byte {
 	return encrypted
 }
 
+// DecryptCard recovers the original card via the inverse exponent.
 func DecryptCard(encryptedCard []byte, key *Key, prime *big.Int) []byte {
 	c := new(big.Int).SetBytes(encryptedCard)
 	m := new(big.Int).Exp(c, key.InverseExponent, prime)
 	return m.Bytes()
 }
 
+// GenerateKey picks an exponent and its inverse modulo prime-1.
 func GenerateKey(prime *big.Int) (*Key, error) {
 	if prime == nil || prime.Sign() <= 0 {
 		return nil, errors.New("prime must be set")

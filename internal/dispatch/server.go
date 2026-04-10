@@ -44,6 +44,7 @@ type nodeConn struct {
 	closed     bool
 }
 
+// NewServer validates config and initializes dispatch state.
 func NewServer(cfg Config) (*Server, error) {
 	if cfg.Address == "" {
 		return nil, errors.New("address must be set")
@@ -59,6 +60,7 @@ func NewServer(cfg Config) (*Server, error) {
 	}, nil
 }
 
+// Run listens on the configured address until the context ends.
 func (s *Server) Run(ctx context.Context) error {
 	ln, err := net.Listen("tcp", s.cfg.Address)
 	if err != nil {
@@ -70,9 +72,23 @@ func (s *Server) Run(ctx context.Context) error {
 	return nil
 }
 
-// ListenAndServe binds the listener, starts serving in the background, and
-// returns the actual listen address. Useful when the configured address uses
-// port 0.
+// GetSessions reports every active session ID.
+func (s *Server) GetSessions(ctx context.Context) []string {
+	var sessionMap []string
+
+	for _, value := range s.sessions {
+		sessionMap = append(sessionMap, value.id)
+	}
+	return sessionMap
+
+}
+
+// GetUsersInSession lists the members of a session.
+func (s *Server) GetUsersInSession(id string) map[string]struct{} {
+	return s.sessions[id].members
+}
+
+// ListenAndServe starts serving in background and returns the bound address.
 func (s *Server) ListenAndServe(ctx context.Context) (string, error) {
 	ln, err := net.Listen("tcp", s.cfg.Address)
 	if err != nil {
@@ -177,6 +193,8 @@ func (s *Server) handleFrame(nc *nodeConn, frame protocol.Frame) {
 		s.handleJoinSession(nc, frame)
 	case protocol.KindListPeersReq:
 		s.handleListPeers(nc, frame)
+	case protocol.KindListSessionsReq:
+		s.handleListSessions(nc, frame)
 	case protocol.KindHeartbeatReq:
 		s.handleHeartbeat(nc, frame)
 	default:
@@ -262,6 +280,22 @@ func (s *Server) handleListPeers(nc *nodeConn, frame protocol.Frame) {
 		SessionID:     nc.sessionID,
 		PeerIDs:       peerIDs,
 		PeerAddresses: peerAddrs,
+	})
+}
+
+func (s *Server) handleListSessions(nc *nodeConn, frame protocol.Frame) {
+	s.mu.RLock()
+	ids := make([]string, 0, len(s.sessions))
+	for id := range s.sessions {
+		ids = append(ids, id)
+	}
+	s.mu.RUnlock()
+
+	_ = nc.conn.Send(protocol.Frame{
+		Kind:       protocol.KindListSessionsResp,
+		RequestID:  frame.RequestID,
+		Success:    true,
+		SessionIDs: ids,
 	})
 }
 

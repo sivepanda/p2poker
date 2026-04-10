@@ -1,5 +1,7 @@
 package transport
 
+// GOB DOCS: https://pkg.go.dev/encoding/gob
+
 import (
 	"encoding/gob"
 	"net"
@@ -15,6 +17,7 @@ type GobConn struct {
 	writeMu sync.Mutex
 }
 
+// NewGobConn Creates a new Gob connection using the Go standard connection library
 func NewGobConn(conn net.Conn) *GobConn {
 	return &GobConn{
 		conn:    conn,
@@ -23,6 +26,7 @@ func NewGobConn(conn net.Conn) *GobConn {
 	}
 }
 
+// Send uses Gob to send a packet of type protocol.Frame
 func (c *GobConn) Send(frame protocol.Frame) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
@@ -30,6 +34,7 @@ func (c *GobConn) Send(frame protocol.Frame) error {
 	return c.encoder.Encode(frame)
 }
 
+// Receive decodes the next Gob frame from the remote.
 func (c *GobConn) Receive() (protocol.Frame, error) {
 	var frame protocol.Frame
 	err := c.decoder.Decode(&frame)
@@ -40,10 +45,12 @@ func (c *GobConn) Receive() (protocol.Frame, error) {
 	return frame, nil
 }
 
+// Close kills the underlying network connection.
 func (c *GobConn) Close() error {
 	return c.conn.Close()
 }
 
+// RawConn exposes the raw net.Conn for callers that need it.
 func (c *GobConn) RawConn() net.Conn {
 	return c.conn
 }
