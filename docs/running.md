@@ -75,3 +75,4 @@ go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -broadcast -body "he
 | `-send-to` | | Target node ID for a direct message |
 | `-broadcast` | `false` | Broadcast message to all session peers |
 | `-body` | `"hello"` | Message body |
+| `-rpc-addr` | *(disabled)* | gRPC listen address for frontend UI clients (e.g. `:50051`) |

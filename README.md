@@ -1,40 +1,38 @@
 # Peer-to-Peer Poker 
 
-A fully decentralized, trustless multiplayer Texas Hold'em poker game played over a peer-to-peer network with no central server or authority.
+A fully decentralized, trustless multiplayer Texas Hold'em poker game over a peer-to-peer network with no central server.
 
 ## Overview
 
-Players connect directly to each other and use cryptographic protocols to ensure fair play without relying on a trusted third party. The system handles three core challenges:
+Players connect directly to each other and use cryptographic protocols to ensure fair play without a trusted third party. The system handles three core challenges:
 
-- **Trustless Card Dealing** — uses commutative encryption (SRA) with fresh ephemeral keypairs per game so that the deck is collectively shuffled and encrypted by all players. No single player controls the deck order, and no player can see another's cards. At showdown, players publish their private keys to allow cryptographic verification of claimed hands.
+- **Trustless Card Dealing** - uses commutative encryption (SRA) with fresh ephemeral keypairs per game. The deck is collectively shuffled and encrypted by all players so no single player controls the card order or can see another's cards. At showdown, players publish their private keys for cryptographic verification.
 
-- **Action Logging & Round Consistency** — two candidate approaches are under consideration:
-  1. **Symmetric Replicated Log (Zookeeper-Inspired)** — every player maintains a full replica of the game log. Actions are proposed, validated, and committed via a mutual verification protocol using ephemeral files. Integrity comes from unanimous agreement rather than a single authority.
-  2. **Signed Hot-Potato Log (DNSSEC-Inspired)** — the game log travels around the ring with each turn. Every action is cryptographically signed by its author using ephemeral keys, allowing any player to independently verify the entire history. Lighter on bandwidth since only one player holds the log at a time.
+- **Action Logging & Round Consistency** - every player holds a full replica of the game log. Each action is signed over the entire log history so that a single signature simultaneously proves identity, consistency, and integrity. Divergence is detected immediately on the next turn rather than at audit boundaries. See [the consistency whitepaper](docs/whitepaper/consistency.md) for details.
 
-- **Liveness & Fault Tolerance** — configurable timeouts detect unresponsive players, who are auto-folded after repeated failures to prevent stalling.
+- **Liveness & Fault Tolerance** - configurable timeouts detect unresponsive players, who are auto-folded after repeated failures to prevent stalling.
 
 ## Key Properties
 - **No central server** - all game logic is executed and verified by every participant
-- **Turn-based simplicity** - only one player acts at a time, so ordering is straightforward and concurrency is limited
+- **Turn-based simplicity** - one player acts at a time, so ordering is straightforward
 - **Forward secrecy** - ephemeral keypairs per game ensure past sessions cannot be decrypted if a long-term key is compromised
 - **Tamper-evident** - any attempt to forge, replay, reorder, or deny actions is cryptographically detectable
-- **UI Plugin Interface** - the core of the service/daemon is agnostic to what the frontend runtime is. There is simply an API contract where the service can direct the user facing client to "render a card being passed to the player," meaning that anyone can bundle or write their own "frontend" to their liking.
+- **UI Plugin Interface** - the core service is frontend-agnostic. An API contract lets any client render the game, so anyone can write their own frontend.
 
 ## Project Structure
 
-The project follows Go conventions inspired by Kubernetes and Docker layouts. See [docs/package_structure.md](docs/package_structure.md) for details.
+Follows Go conventions inspired by Kubernetes and Docker layouts. See [docs/package_structure.md](docs/package_structure.md) for details.
 
 ```
 cmd/
-  dispatch/    # Dispatch server executable — central discovery for peer lookups
-  node/        # Node executable — a single player's peer process
-  sim/         # Simulation executable — local game simulation
+  dispatch/    # Discovery server for peer lookups
+  node/        # Single player's peer process
+  sim/         # Local game simulation
 internal/
-  crypto/      # Cryptographic hashing, signing, and decryption (deck & log)
+  crypto/      # Cryptographic primitives (deck & log)
   dispatch/    # Dispatch server logic
-  peer/        # Peer representation and management
-  protocol/    # Game protocol definitions
+  peer/        # Peer networking and mesh
+  protocol/    # Wire format and frame definitions
   sim/         # Simulation logic
   transport/   # Network transport layer
 ```
@@ -52,13 +50,13 @@ go run ./cmd/sim
 ### Dispatch + Nodes (P2P Framework)
 
 ```sh
-# Terminal 1 — start the dispatch server
+# Terminal 1 - start the dispatch server
 go run ./cmd/dispatch -addr :9000
 
-# Terminal 2 — create a session and join as the first node
+# Terminal 2 - create a session and join as the first node
 go run ./cmd/node -dispatch 127.0.0.1:9000 -create -session table-1 -list-peers
 
-# Terminal 3 — join the existing session as a second node
+# Terminal 3 - join the existing session as a second node
 go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -list-peers
 
 # Send a message from one node to another
@@ -72,12 +70,12 @@ make build   # produces ./app, ./dispatch, ./node binaries
 make clean   # removes built binaries
 ```
 
+See [docs/running.md](docs/running.md) for full flag reference.
+
 ## Planning & Design
 
-Detailed algorithm specifications and security analysis can be found in the docs directory:
-
 - [Trustless Card Dealing Algorithm](docs/whitepaper/dealing.md)
-- [Round Consistency Methods](docs/whitepaper/consistency.md)
+- [Round Consistency](docs/whitepaper/consistency.md)
 
 
 *This project was made as a final project for Computer Science 390.03, Distributed Systems at Duke University, taught by Dr. Jeff Chase in Spring 2026.*  
