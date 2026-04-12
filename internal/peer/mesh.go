@@ -37,6 +37,7 @@ func (n *Node) ConnectToPeers(ctx context.Context) error {
 	return nil
 }
 
+// acceptPeers accepts inbound peer TCP connections.
 func (n *Node) acceptPeers() {
 	for {
 		raw, err := n.listener.Accept()
@@ -49,6 +50,7 @@ func (n *Node) acceptPeers() {
 	}
 }
 
+// handleIncomingPeer validates and registers an inbound peer.
 func (n *Node) handleIncomingPeer(conn *transport.GobConn) {
 	frame, err := conn.Receive()
 	if err != nil {
@@ -77,6 +79,7 @@ func (n *Node) handleIncomingPeer(conn *transport.GobConn) {
 	n.peerReadLoop(peerID, conn)
 }
 
+// dialPeer opens an outbound peer connection and handshakes.
 func (n *Node) dialPeer(ctx context.Context, peerID, addr string) error {
 	dialer := &net.Dialer{}
 	raw, err := dialer.DialContext(ctx, "tcp", addr)
@@ -112,6 +115,7 @@ func (n *Node) dialPeer(ctx context.Context, peerID, addr string) error {
 	return nil
 }
 
+// peerReadLoop receives frames and dispatches message handlers.
 func (n *Node) peerReadLoop(peerID string, conn *transport.GobConn) {
 	defer func() {
 		n.peersMu.Lock()

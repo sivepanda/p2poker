@@ -105,6 +105,7 @@ func Decode[T any](msg Message) (T, error) {
 	return out, nil
 }
 
+// encodePayload serializes a payload using gob encoding.
 func encodePayload(payload any) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(payload); err != nil {

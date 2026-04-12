@@ -72,10 +72,7 @@ func (s *Server) Run(ctx context.Context) error {
 	return nil
 }
 
-<<<<<<< HEAD
 // GetSessions reports every active session ID.
-=======
->>>>>>> fe6fe75 (feat: add client gRPC layer for UI directives)
 func (s *Server) GetSessions(ctx context.Context) []string {
 	var sessionMap []string
 
@@ -86,22 +83,14 @@ func (s *Server) GetSessions(ctx context.Context) []string {
 
 }
 
-<<<<<<< HEAD
 // GetUsersInSession lists the members of a session.
-=======
-// Returns the list of members that are in a session.
->>>>>>> fe6fe75 (feat: add client gRPC layer for UI directives)
 func (s *Server) GetUsersInSession(id string) map[string]struct{} {
 	return s.sessions[id].members
 }
 
-<<<<<<< HEAD
-// ListenAndServe starts serving in background and returns the bound address.
-=======
 // ListenAndServe binds the listener, starts serving in the background, and
 // returns the actual listen address. Useful when the configured address uses
-// port 0.
->>>>>>> fe6fe75 (feat: add client gRPC layer for UI directives)
+// port 0
 func (s *Server) ListenAndServe(ctx context.Context) (string, error) {
 	ln, err := net.Listen("tcp", s.cfg.Address)
 	if err != nil {
@@ -112,6 +101,7 @@ func (s *Server) ListenAndServe(ctx context.Context) (string, error) {
 	return ln.Addr().String(), nil
 }
 
+// serve accepts new node connections until shutdown.
 func (s *Server) serve(ctx context.Context, ln net.Listener) {
 	go s.leaseReaper(ctx)
 	go func() {
@@ -132,6 +122,7 @@ func (s *Server) serve(ctx context.Context, ln net.Listener) {
 	}
 }
 
+// handleConn registers a node and processes its frames.
 func (s *Server) handleConn(_ context.Context, conn *transport.GobConn) {
 	nc, err := s.register(conn)
 	if err != nil {
@@ -154,6 +145,7 @@ func (s *Server) handleConn(_ context.Context, conn *transport.GobConn) {
 	}
 }
 
+// register validates the first frame and tracks the node.
 func (s *Server) register(conn *transport.GobConn) (*nodeConn, error) {
 	frame, err := conn.Receive()
 	if err != nil {
@@ -196,6 +188,7 @@ func (s *Server) register(conn *transport.GobConn) (*nodeConn, error) {
 	return nc, nil
 }
 
+// handleFrame dispatches an inbound frame to a handler.
 func (s *Server) handleFrame(nc *nodeConn, frame protocol.Frame) {
 	s.renewLease(nc.id)
 
@@ -215,6 +208,7 @@ func (s *Server) handleFrame(nc *nodeConn, frame protocol.Frame) {
 	}
 }
 
+// handleCreateSession creates a session and joins the caller.
 func (s *Server) handleCreateSession(nc *nodeConn, frame protocol.Frame) {
 	sessionID := frame.SessionID
 	if sessionID == "" {
@@ -240,6 +234,7 @@ func (s *Server) handleCreateSession(nc *nodeConn, frame protocol.Frame) {
 	_ = nc.conn.Send(protocol.Frame{Kind: protocol.KindCreateSessionResp, RequestID: frame.RequestID, Success: true, SessionID: sessionID})
 }
 
+// handleJoinSession moves the caller into an existing session.
 func (s *Server) handleJoinSession(nc *nodeConn, frame protocol.Frame) {
 	if frame.SessionID == "" {
 		_ = nc.conn.Send(protocol.Frame{Kind: protocol.KindJoinSessionResp, RequestID: frame.RequestID, Success: false, Error: "session id required"})
@@ -265,6 +260,7 @@ func (s *Server) handleJoinSession(nc *nodeConn, frame protocol.Frame) {
 	_ = nc.conn.Send(protocol.Frame{Kind: protocol.KindJoinSessionResp, RequestID: frame.RequestID, Success: true, SessionID: frame.SessionID})
 }
 
+// handleListPeers returns peer IDs and addresses in session.
 func (s *Server) handleListPeers(nc *nodeConn, frame protocol.Frame) {
 	s.mu.RLock()
 	if nc.sessionID == "" {
@@ -296,6 +292,7 @@ func (s *Server) handleListPeers(nc *nodeConn, frame protocol.Frame) {
 	})
 }
 
+// handleListSessions returns all active session IDs.
 func (s *Server) handleListSessions(nc *nodeConn, frame protocol.Frame) {
 	s.mu.RLock()
 	ids := make([]string, 0, len(s.sessions))
@@ -312,11 +309,13 @@ func (s *Server) handleListSessions(nc *nodeConn, frame protocol.Frame) {
 	})
 }
 
+// handleHeartbeat extends the caller lease and responds.
 func (s *Server) handleHeartbeat(nc *nodeConn, frame protocol.Frame) {
 	lease := s.renewLease(nc.id)
 	_ = nc.conn.Send(protocol.Frame{Kind: protocol.KindHeartbeatResp, RequestID: frame.RequestID, Success: true, LeaseExpiresUnix: lease.Unix()})
 }
 
+// renewLease extends a node lease and returns expiration.
 func (s *Server) renewLease(nodeID string) time.Time {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -330,6 +329,7 @@ func (s *Server) renewLease(nodeID string) time.Time {
 	return nc.leaseUntil
 }
 
+// leaseReaper disconnects nodes with expired leases.
 func (s *Server) leaseReaper(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -357,6 +357,7 @@ func (s *Server) leaseReaper(ctx context.Context) {
 	}
 }
 
+// disconnect removes a node and closes its connection.
 func (s *Server) disconnect(nodeID string) {
 	s.mu.Lock()
 	nc, ok := s.nodes[nodeID]
@@ -375,6 +376,7 @@ func (s *Server) disconnect(nodeID string) {
 	_ = nc.conn.Close()
 }
 
+// removeNodeFromSessionLocked removes membership and empty sessions.
 func (s *Server) removeNodeFromSessionLocked(nodeID, sessionID string) {
 	sess, ok := s.sessions[sessionID]
 	if !ok {
@@ -387,11 +389,13 @@ func (s *Server) removeNodeFromSessionLocked(nodeID, sessionID string) {
 	}
 }
 
+// nextNodeID returns the next generated node ID.
 func (s *Server) nextNodeID() string {
 	v := atomic.AddUint64(&s.nodeCounter, 1)
 	return fmt.Sprintf("node-%d", v)
 }
 
+// nextSessionID returns the next generated session ID.
 func (s *Server) nextSessionID() string {
 	v := atomic.AddUint64(&s.sessionCounter, 1)
 	return fmt.Sprintf("session-%d", v)

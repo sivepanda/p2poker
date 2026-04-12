@@ -31,6 +31,7 @@ type Network struct {
 	dealingGrid [][]chan DealingRequest
 }
 
+// NewNetwork validates config and allocates simulation channels.
 func NewNetwork(cfg Config) (*Network, error) {
 	if cfg.NumNodes < 2 {
 		return nil, errors.New("num nodes must be at least 2")
@@ -51,6 +52,7 @@ func NewNetwork(cfg Config) (*Network, error) {
 	return network, nil
 }
 
+// Run starts all simulated nodes and waits for completion.
 func (n *Network) Run() error {
 	var wg sync.WaitGroup
 
@@ -71,6 +73,7 @@ func (n *Network) Run() error {
 	return nil
 }
 
+// setupGrids allocates channels for shuffle and dealing relays.
 func (n *Network) setupGrids() {
 	for i := 0; i < n.numNodes; i++ {
 		n.shuffleGrid[i] = make([]chan [][]byte, n.numNodes)
@@ -83,6 +86,7 @@ func (n *Network) setupGrids() {
 	}
 }
 
+// runLeader executes shuffle and dealing for node zero.
 func (n *Network) runLeader(id int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -108,6 +112,7 @@ func (n *Network) runLeader(id int, wg *sync.WaitGroup) {
 	n.runPlayer(id, finalDeck, key)
 }
 
+// runFollower executes shuffle and dealing for non-leader nodes.
 func (n *Network) runFollower(id int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -133,11 +138,13 @@ func (n *Network) runFollower(id int, wg *sync.WaitGroup) {
 	n.runPlayer(id, finalDeck, key)
 }
 
+// runPlayer handles card dealing for one simulated node.
 func (n *Network) runPlayer(id int, finalDeck [][]byte, key *deckcrypto.Key) {
 	card1, card2 := n.dealCards(id, finalDeck, key)
 	fmt.Printf("\n[Player %d] Received cards: [%s] [%s]\n", id, card1, card2)
 }
 
+// shufflePhaseLeader starts relay, then broadcasts final deck.
 func (n *Network) shufflePhaseLeader(key *deckcrypto.Key) ([][]byte, error) {
 	deck := make([][]byte, 52)
 	for i := 0; i < len(deck); i++ {
@@ -165,6 +172,7 @@ func (n *Network) shufflePhaseLeader(key *deckcrypto.Key) ([][]byte, error) {
 	return finalDeck, nil
 }
 
+// shufflePhaseFollower shuffles, encrypts, and forwards the deck.
 func (n *Network) shufflePhaseFollower(id int, key *deckcrypto.Key) ([][]byte, error) {
 	prev := id - 1
 	next := (id + 1) % n.numNodes
@@ -187,6 +195,7 @@ func (n *Network) shufflePhaseFollower(id int, key *deckcrypto.Key) ([][]byte, e
 	return finalDeck, nil
 }
 
+// dealCards runs the ring decryption flow for this player.
 func (n *Network) dealCards(id int, finalDeck [][]byte, key *deckcrypto.Key) (string, string) {
 	cardIndex1 := 2 * id
 	cardIndex2 := 2*id + 1

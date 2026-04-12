@@ -23,3 +23,4 @@ clean:
 	rm -f app
 	rm -f dispatch
 	rm -f node
+	rm -f sim

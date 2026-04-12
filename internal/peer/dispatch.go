@@ -10,6 +10,7 @@ import (
 	"github.com/sivepanda/p2poker/internal/protocol"
 )
 
+// CreateSession asks dispatch to create (or name) a session.
 func (n *Node) CreateSession(ctx context.Context, sessionID string) (string, error) {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{
 		Kind:      protocol.KindCreateSessionReq,
@@ -29,6 +30,7 @@ func (n *Node) CreateSession(ctx context.Context, sessionID string) (string, err
 	return resp.SessionID, nil
 }
 
+// JoinSession asks dispatch to join an existing session.
 func (n *Node) JoinSession(ctx context.Context, sessionID string) error {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{
 		Kind:      protocol.KindJoinSessionReq,
@@ -48,6 +50,7 @@ func (n *Node) JoinSession(ctx context.Context, sessionID string) error {
 	return nil
 }
 
+// ListSessions returns session IDs known by dispatch.
 func (n *Node) ListSessions(ctx context.Context) ([]string, error) {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{Kind: protocol.KindListSessionsReq})
 	if err != nil {
@@ -59,6 +62,7 @@ func (n *Node) ListSessions(ctx context.Context) ([]string, error) {
 	return resp.SessionIDs, nil
 }
 
+// Heartbeat renews this node's dispatch lease.
 func (n *Node) Heartbeat(ctx context.Context) error {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{Kind: protocol.KindHeartbeatReq})
 	if err != nil {
@@ -70,6 +74,7 @@ func (n *Node) Heartbeat(ctx context.Context) error {
 	return nil
 }
 
+// StartHeartbeat launches periodic lease renewals.
 func (n *Node) StartHeartbeat(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		interval = 2 * time.Second
@@ -91,6 +96,7 @@ func (n *Node) StartHeartbeat(ctx context.Context, interval time.Duration) {
 	}()
 }
 
+// dispatchRequest sends a frame and waits for its response.
 func (n *Node) dispatchRequest(ctx context.Context, frame protocol.Frame) (protocol.Frame, error) {
 	requestID := n.nextRequestID()
 	frame.RequestID = requestID
@@ -122,6 +128,7 @@ func (n *Node) dispatchRequest(ctx context.Context, frame protocol.Frame) (proto
 	}
 }
 
+// dispatchReadLoop routes dispatch responses to waiting callers.
 func (n *Node) dispatchReadLoop() {
 	for {
 		frame, err := n.dispatchConn.Receive()
@@ -142,6 +149,7 @@ func (n *Node) dispatchReadLoop() {
 	}
 }
 
+// closeAllPending closes every waiting dispatch response channel.
 func (n *Node) closeAllPending() {
 	n.pendingMu.Lock()
 	defer n.pendingMu.Unlock()
@@ -152,6 +160,7 @@ func (n *Node) closeAllPending() {
 	}
 }
 
+// nextRequestID generates a unique request ID for dispatch calls.
 func (n *Node) nextRequestID() string {
 	v := atomic.AddUint64(&n.requestCounter, 1)
 	return fmt.Sprintf("%s-%d", n.id, v)
