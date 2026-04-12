@@ -13,6 +13,13 @@ const (
 	KindListSessionsResp  = "list_sessions_resp"
 	KindHeartbeatReq      = "heartbeat_req"
 	KindHeartbeatResp     = "heartbeat_resp"
+	KindSetupPk           = "setup_pk"
+	KindShufflePass       = "shuffle_pass"
+	KindDealPass          = "deal_pass"
+	KindCommit            = "commit"
+	KindProposal          = "proposal"
+	KindVerifyAck         = "verify_ack"
+	KindAbort             = "abort"
 )
 
 type Frame struct {
