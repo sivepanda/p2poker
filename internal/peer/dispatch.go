@@ -146,6 +146,14 @@ func (n *Node) dispatchReadLoop() {
 				continue
 			}
 		}
+
+		// Handle push frames from dispatch (no RequestID).
+		switch frame.Kind {
+		case protocol.KindGameStart:
+			if n.onGameStart != nil {
+				go n.onGameStart(frame.SessionID, frame.PeerIDs)
+			}
+		}
 	}
 }
 

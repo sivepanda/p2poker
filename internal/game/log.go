@@ -1,6 +1,13 @@
 package game
 
-import "crypto/ed25519"
+import (
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/binary"
+	"errors"
+
+	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
+)
 
 // Entry is a committed log entry. Doubles as a proposal before commit.
 type Entry struct {
@@ -8,55 +15,109 @@ type Entry struct {
 	PlayerID  uint8
 	Action    Action
 	Signature []byte
+	Data      []byte // arbitrary round-specific payload (e.g. node order in entry 0)
 }
 
-// Bytes: [8 RoundID BE][1 PlayerID][Action bytes][2 sig len BE][sig].
+// Bytes [8 RoundID BE][1 PlayerID][Action bytes][2 sig len BE][sig][4 data len BE][data].
 // Prior-entry sigs are hashed into the log chain
 func (e Entry) Bytes() []byte {
-	panic("not implemented")
+	buf := make([]byte, 8+1)
+	binary.BigEndian.PutUint64(buf[:8], e.RoundID)
+	buf[8] = e.PlayerID
+	buf = append(buf, e.Action.Bytes()...)
+
+	sigLen := make([]byte, 2)
+	binary.BigEndian.PutUint16(sigLen, uint16(len(e.Signature)))
+	buf = append(buf, sigLen...)
+	buf = append(buf, e.Signature...)
+
+	dataLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(dataLen, uint32(len(e.Data)))
+	buf = append(buf, dataLen...)
+	buf = append(buf, e.Data...)
+
+	return buf
 }
 
 type Log struct {
-	entries []Entry
+	entries    []Entry
+	numPlayers uint8
 }
 
 func NewLog() *Log {
-	panic("not implemented")
+	return &Log{}
 }
 
 // RoundID == len(entries); the round the next proposer signs under.
 func (l *Log) RoundID() uint64 {
-	panic("not implemented")
-}
-
-func (l *Log) Hash() []byte {
-	panic("not implemented")
+	return uint64(len(l.entries))
 }
 
 // Bytes returns the bytes Hash() hashes over.
 func (l *Log) Bytes() []byte {
-	panic("not implemented")
+	var buf []byte
+	for _, e := range l.entries {
+		buf = append(buf, e.Bytes()...)
+	}
+	return buf
 }
 
-// ExpectedNextPlayer: deterministic function of the log (seat order from
+func (l *Log) Hash() []byte {
+	h := sha256.Sum256(l.Bytes())
+	return h[:]
+}
+
+// ExpectedNextPlayer deterministic function of the log (seat order from
 // entry 0, folds, dealer button, street). Stub until rules engine exists.
 func (l *Log) ExpectedNextPlayer() uint8 {
-	panic("not implemented")
+	if l.numPlayers == 0 {
+		return 0
+	}
+	// Simple round-robin stub. Real implementation will consider folds,
+	// streets, dealer button, etc.
+	return uint8(l.RoundID() % uint64(l.numPlayers))
+}
+
+// SetNumPlayers configures the player count for turn order.
+// Called once during game setup (from the node order in entry 0).
+func (l *Log) SetNumPlayers(n uint8) {
+	l.numPlayers = n
+}
+
+// NumPlayers returns the configured player count.
+func (l *Log) NumPlayers() uint8 {
+	return l.numPlayers
+}
+
+// Entries returns a copy of the log entries.
+func (l *Log) Entries() []Entry {
+	out := make([]Entry, len(l.entries))
+	copy(out, l.entries)
+	return out
 }
 
 // Append adds e without verification. Caller must have verified first.
 func (l *Log) Append(e Entry) {
-	panic("not implemented")
+	l.entries = append(l.entries, e)
 }
 
 // RollbackLast drops the last entry. Used on round abort.
 func (l *Log) RollbackLast() {
-	panic("not implemented")
+	if len(l.entries) > 0 {
+		l.entries = l.entries[:len(l.entries)-1]
+	}
 }
 
 // BuildProposal signs (l.Bytes() || action.Bytes()).
 func (l *Log) BuildProposal(playerID uint8, action Action, sk ed25519.PrivateKey) Entry {
-	panic("not implemented")
+	payload := append(l.Bytes(), action.Bytes()...)
+	sig := cryptolog.Sign(sk, payload)
+	return Entry{
+		RoundID:   l.RoundID(),
+		PlayerID:  playerID,
+		Action:    action,
+		Signature: sig,
+	}
 }
 
 // VerifyProposal checks, in order:
@@ -64,8 +125,16 @@ func (l *Log) BuildProposal(playerID uint8, action Action, sk ed25519.PrivateKey
 //  2. p.PlayerID == l.ExpectedNextPlayer()
 //  3. p.Action legal given game state (TODO: rules)
 //  4. sig over (l.Bytes() || p.Action.Bytes()) under pk
+//
+// Signature verification is stubbed to always pass for now.
 func (l *Log) VerifyProposal(p Entry, pk ed25519.PublicKey) error {
-	panic("not implemented")
+	if p.RoundID != l.RoundID() {
+		return errors.New("round id mismatch")
+	}
+	// TODO: check p.PlayerID == l.ExpectedNextPlayer() once rules engine exists
+	// TODO: check action legality
+	// TODO: verify signature: cryptolog.Verify(pk, append(l.Bytes(), p.Action.Bytes()...), p.Signature)
+	return nil
 }
 
 // VerifyReceipt is the ephemeral "I appended" file. Published AFTER Append.
@@ -78,10 +147,29 @@ type VerifyReceipt struct {
 
 // BuildVerifyReceipt: call after Append(p) succeeds.
 func (l *Log) BuildVerifyReceipt(playerID uint8, sk ed25519.PrivateKey) VerifyReceipt {
-	panic("not implemented")
+	hash := l.Hash()
+	roundID := l.RoundID() - 1 // receipt is for the entry just appended
+
+	var payload []byte
+	payload = append(payload, hash...)
+	payload = append(payload, []byte("verify")...)
+	roundBuf := make([]byte, 8)
+	binary.BigEndian.PutUint64(roundBuf, roundID)
+	payload = append(payload, roundBuf...)
+
+	sig := cryptolog.Sign(sk, payload)
+	return VerifyReceipt{
+		RoundID:     roundID,
+		PlayerID:    playerID,
+		PostLogHash: hash,
+		Signature:   sig,
+	}
 }
 
 // VerifyVerifyReceipt checks RoundID, PostLogHash matches our log, and sig.
+// Stubbed to always pass for now.
 func (l *Log) VerifyVerifyReceipt(r VerifyReceipt, pk ed25519.PublicKey) error {
-	panic("not implemented")
+	// TODO: verify r.PostLogHash == l.Hash()
+	// TODO: verify signature
+	return nil
 }

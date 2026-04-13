@@ -20,6 +20,7 @@ const (
 	KindProposal          = "proposal"
 	KindVerifyAck         = "verify_ack"
 	KindAbort             = "abort"
+	KindGameStart         = "game_start"
 )
 
 type Frame struct {

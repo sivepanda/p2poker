@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/sivepanda/p2poker/internal/clientrpc"
+	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
 	"github.com/sivepanda/p2poker/internal/peer"
+	"github.com/sivepanda/p2poker/internal/round"
 )
 
 type ChatMessage struct {
@@ -93,6 +95,25 @@ func main() {
 		fmt.Printf("mesh connect failed: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Initialize ephemeral file handlers for remote reads.
+	node.InitEphemeralHandlers()
+
+	// Generate ephemeral keypair for this session.
+	pk, sk, err := cryptolog.GenerateSigner()
+	if err != nil {
+		fmt.Printf("keygen failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// When dispatch sends a game start, spin up the round runner.
+	node.SetGameStartHandler(func(sessionID string, order []string) {
+		fmt.Printf("game starting in session %s, order: %v\n", sessionID, order)
+		runner := round.New(node, node.Store(), order, sk, pk)
+		if err := runner.Run(ctx); err != nil {
+			fmt.Printf("round runner exited: %v\n", err)
+		}
+	})
 
 	if *sendTo != "" {
 		if err := node.Send(*sendTo, "chat", ChatMessage{Body: *body, Sent: time.Now()}); err != nil {

@@ -1,5 +1,10 @@
 package game
 
+import (
+	"encoding/binary"
+	"errors"
+)
+
 type ActionKind uint8
 
 const (
@@ -16,9 +21,18 @@ type Action struct {
 
 // Bytes [1 byte Kind][8 bytes Amount BE]. Amount==0 unless Raise.
 func (a Action) Bytes() []byte {
-	panic("not implemented")
+	buf := make([]byte, 9)
+	buf[0] = byte(a.Kind)
+	binary.BigEndian.PutUint64(buf[1:], a.Amount)
+	return buf
 }
 
 func UnmarshalAction(b []byte) (Action, error) {
-	panic("not implemented")
+	if len(b) < 9 {
+		return Action{}, errors.New("action bytes too short")
+	}
+	return Action{
+		Kind:   ActionKind(b[0]),
+		Amount: binary.BigEndian.Uint64(b[1:]),
+	}, nil
 }

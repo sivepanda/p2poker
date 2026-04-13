@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -203,6 +204,8 @@ func (s *Server) handleFrame(nc *nodeConn, frame protocol.Frame) {
 		s.handleListSessions(nc, frame)
 	case protocol.KindHeartbeatReq:
 		s.handleHeartbeat(nc, frame)
+	case protocol.KindGameStart:
+		s.handleGameStart(nc, frame)
 	default:
 		_ = nc.conn.Send(protocol.Frame{Kind: frame.Kind, RequestID: frame.RequestID, Success: false, Error: "unknown frame kind"})
 	}
@@ -313,6 +316,45 @@ func (s *Server) handleListSessions(nc *nodeConn, frame protocol.Frame) {
 func (s *Server) handleHeartbeat(nc *nodeConn, frame protocol.Frame) {
 	lease := s.renewLease(nc.id)
 	_ = nc.conn.Send(protocol.Frame{Kind: protocol.KindHeartbeatResp, RequestID: frame.RequestID, Success: true, LeaseExpiresUnix: lease.Unix()})
+}
+
+// handleGameStart broadcasts a deterministic player order to all session members.
+// After this, the dispatch server is no longer involved in the game.
+func (s *Server) handleGameStart(nc *nodeConn, frame protocol.Frame) {
+	s.mu.RLock()
+	sess, ok := s.sessions[nc.sessionID]
+	if !ok {
+		s.mu.RUnlock()
+		_ = nc.conn.Send(protocol.Frame{
+			Kind:    protocol.KindGameStart,
+			Success: false,
+			Error:   "node is not in a session",
+		})
+		return
+	}
+
+	memberIDs := make([]string, 0, len(sess.members))
+	for id := range sess.members {
+		memberIDs = append(memberIDs, id)
+	}
+	s.mu.RUnlock()
+
+	sort.Strings(memberIDs)
+
+	s.mu.RLock()
+	for _, id := range memberIDs {
+		node, ok := s.nodes[id]
+		if !ok {
+			continue
+		}
+		_ = node.conn.Send(protocol.Frame{
+			Kind:      protocol.KindGameStart,
+			SessionID: nc.sessionID,
+			PeerIDs:   memberIDs,
+			Success:   true,
+		})
+	}
+	s.mu.RUnlock()
 }
 
 // renewLease extends a node lease and returns expiration.

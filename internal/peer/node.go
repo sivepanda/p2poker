@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/sivepanda/p2poker/internal/ephemeral"
 	"github.com/sivepanda/p2poker/internal/protocol"
 	"github.com/sivepanda/p2poker/internal/transport"
 )
@@ -44,6 +45,12 @@ type Node struct {
 	handlers   map[string]Handler
 
 	requestCounter uint64
+
+	store         *ephemeral.Store
+	peerPendingMu sync.Mutex
+	peerPending   map[string]chan EphemeralReadResponse
+
+	onGameStart func(sessionID string, order []string)
 }
 
 // Connect registers the node with dispatch and starts its listeners.
@@ -104,6 +111,8 @@ func Connect(ctx context.Context, cfg Config) (*Node, error) {
 		peers:        make(map[string]*transport.GobConn),
 		pending:      make(map[string]chan protocol.Frame),
 		handlers:     make(map[string]Handler),
+		store:        ephemeral.New(),
+		peerPending:  make(map[string]chan EphemeralReadResponse),
 	}
 
 	go n.dispatchReadLoop()
@@ -127,6 +136,16 @@ func (n *Node) SessionID() string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.session
+}
+
+// Store returns the node's local ephemeral store.
+func (n *Node) Store() *ephemeral.Store {
+	return n.store
+}
+
+// SetGameStartHandler registers a callback for when dispatch sends a game start.
+func (n *Node) SetGameStartHandler(fn func(sessionID string, order []string)) {
+	n.onGameStart = fn
 }
 
 // Close kills the node and its network resources.
