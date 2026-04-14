@@ -26,7 +26,16 @@ SRA (commutative encryption) implementation for the card deck. Provides key gene
 Ed25519-based signing and verification for action log entries. Each `Entry` contains an author ID, action string, and signature. Provides helpers to generate ephemeral signer keypairs, sign actions (SHA-256 hash + Ed25519), and verify entries against a public key.
 
 ## `/internal/dispatch`
-Server-side implementation of the dispatch service. Manages a map of registered `nodeConn` records and `session` groups. Handles the full frame-based protocol: registration, session create/join, peer listing, heartbeats, and lease expiry reaping. Runs a background goroutine that disconnects nodes whose leases have expired.
+Server-side implementation of the dispatch service. Manages a map of registered `nodeConn` records and `session` groups. Handles the full frame-based protocol: registration, session create/join, peer listing, heartbeats, and lease expiry reaping. Seeds a deterministic turn order when a session is created (random permutation of node IDs) and returns it to joiners so every peer agrees on seating. Runs a background goroutine that disconnects nodes whose leases have expired.
+
+## `/internal/ephemeral`
+Thread-safe in-memory key-value store (`Store`) used to host per-round proposal and verify-receipt files. Each node runs its own `Store`; remote nodes poll for keys over the peer network. Values are opaque `[]byte` so the same store can back signed log data, hashes, or arbitrary round-specific payloads. Defines the canonical key conventions (`proposal-{roundID}`, `{roundID}_verify_{nodeID}`) plus prefix-based cleanup for completed rounds.
+
+## `/internal/game`
+Poker game-state primitives. Defines `Action` (fold/check/call/raise with amount) and its wire encoding, plus the `Log` type — an append-only, SHA-256-chained sequence of signed `Entry` records. The log exposes `BuildProposal`/`VerifyProposal` for the propose step, `Append`/`RollbackLast` for commit, and `BuildVerifyReceipt`/`VerifyVerifyReceipt` for the post-append attestation that every honest node signs. Turn order, fold tracking, and action legality are stubbed pending a full rules engine.
+
+## `/internal/round`
+Per-round orchestration. A `Runner` ties together a `peer.Node`, an `ephemeral.Store`, and a `game.Log` to drive the propose → verify → append → receipt → collect → cleanup lifecycle. Each round a node is either `RoleProposer` (hosts the proposal file, after a local `SubmitAction`) or `RoleVerifier` (polls the proposer for the proposal, verifies, appends, then hosts its own verify receipt). Receipts from all peers are collected concurrently before the round is considered closed.
 
 ## `/internal/peer`
 Client-side peer networking. The `Node` type is the primary interface: it connects to the dispatch server, manages session membership, and builds a direct TCP mesh with other peers in the same session.
@@ -43,12 +52,6 @@ gRPC server that exposes `peer.Node` methods to frontend UI applications over a 
 ### `/internal/clientrpc/clientrpcpb`
 **THIS PACKAGE IS ENTIRELY GENERATED CODE — DO NOT EDIT IT BY HAND.** It is produced by `protoc` from the Protocol Buffer definition at `proto/clientrpc/v1/clientrpc.proto`. Contains message types (`*.pb.go`) and the gRPC server/client interfaces (`*_grpc.pb.go`). Committed to the repo so `go build` works without `protoc` installed. **To change anything here, modify the `.proto` file and regenerate with `make proto`.**
 
-# `/proto`
-Protocol Buffer definitions. These `.proto` files are the canonical API contracts — frontend authors in any language generate their client stubs from them.
-
-## `/proto/clientrpc/v1`
-Defines the `PokerNode` gRPC service: lobby operations (`CreateSession`, `JoinSession`, `ListPeers`, `ConnectPeers`), node info (`GetNodeInfo`), and a server-streaming `SubscribeEvents` RPC for real-time event push. Game-specific RPCs will be added here as the game engine is built.
-
 ## `/internal/protocol`
 Defines the `Frame` struct — the universal wire format for all communication (both dispatch and peer-to-peer). Also declares `Kind` constants for every frame type: register, session create/join, peer list, and heartbeat request/response pairs.
 
@@ -57,3 +60,9 @@ Local simulation engine. The `Network` type sets up a grid of Go channels to sim
 
 ## `/internal/transport`
 Provides `GobConn`, a thread-safe wrapper around a `net.Conn` that uses Go's `encoding/gob` for frame serialization. All dispatch and peer connections use this as their transport layer. Exposes `Send`, `Receive`, `Close`, and `RawConn` methods.
+
+# `/proto`
+Protocol Buffer definitions. These `.proto` files are the canonical API contracts — frontend authors in any language generate their client stubs from them.
+
+## `/proto/clientrpc/v1`
+Defines the `PokerNode` gRPC service: lobby operations (`CreateSession`, `JoinSession`, `ListPeers`, `ConnectPeers`), node info (`GetNodeInfo`), and a server-streaming `SubscribeEvents` RPC for real-time event push. Game-specific RPCs will be added here as the game engine is built.
