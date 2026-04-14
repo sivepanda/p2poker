@@ -127,6 +127,10 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 	}
 
 	fmt.Printf("[sim] %d nodes joined, waiting for dispatch game_start...\n", cfg.NumNodes)
+	startGameErr := nodes[0].StartGame(ctx)
+	if startGameErr != nil {
+		return startGameErr
+	}
 
 	// Wait until every runner has been constructed (game_start delivered).
 	for i := 0; i < cfg.NumNodes; i++ {

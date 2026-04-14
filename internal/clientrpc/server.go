@@ -4,23 +4,37 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/sivepanda/p2poker/internal/clientrpc/clientrpcpb"
+	"github.com/sivepanda/p2poker/internal/game"
 	"github.com/sivepanda/p2poker/internal/peer"
+	"github.com/sivepanda/p2poker/internal/round"
 )
 
 type Server struct {
 	clientrpcpb.UnimplementedPokerNodeServer
 	node *peer.Node
+
+	runnerMu sync.RWMutex
+	runner   *round.Runner
 }
 
 // NewServer builds a client RPC server tied to the node.
 func NewServer(node *peer.Node) *Server {
 	return &Server{node: node}
+}
+
+// SetRunner registers the active round runner so SubmitAction can reach it.
+// Pass nil to clear.
+func (s *Server) SetRunner(r *round.Runner) {
+	s.runnerMu.Lock()
+	s.runner = r
+	s.runnerMu.Unlock()
 }
 
 // CreateSession "forwards" incoming gRPC request to internal CreateSession
@@ -76,6 +90,35 @@ func (s *Server) StartGame(ctx context.Context, req *clientrpcpb.StartGameReques
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &clientrpcpb.StartGameResponse{}, nil
+}
+
+// SubmitAction submits a gameplay action to the active round runner.
+func (s *Server) SubmitAction(ctx context.Context, req *clientrpcpb.SubmitActionRequest) (*clientrpcpb.SubmitActionResponse, error) {
+	s.runnerMu.RLock()
+	r := s.runner
+	s.runnerMu.RUnlock()
+	if r == nil {
+		return nil, status.Error(codes.FailedPrecondition, "no active round runner")
+	}
+
+	var kind game.ActionKind
+	switch req.Kind {
+	case clientrpcpb.ActionKind_ACTION_KIND_FOLD:
+		kind = game.ActionFold
+	case clientrpcpb.ActionKind_ACTION_KIND_CHECK:
+		kind = game.ActionCheck
+	case clientrpcpb.ActionKind_ACTION_KIND_CALL:
+		kind = game.ActionCall
+	case clientrpcpb.ActionKind_ACTION_KIND_RAISE:
+		kind = game.ActionRaise
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "unknown action kind %v", req.Kind)
+	}
+
+	if err := r.SubmitAction(game.Action{Kind: kind, Amount: req.Amount}); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	}
+	return &clientrpcpb.SubmitActionResponse{}, nil
 }
 
 // GetNodeInfo "forwards" incoming gRPC request to internal ListSessions, which returns basic identities for the node.
@@ -136,14 +179,20 @@ func (s *Server) SubscribeEvents(req *clientrpcpb.SubscribeEventsRequest, stream
 	}
 }
 
-// Run starts the gRPC server on the given address.
+// Run starts the gRPC server on the given address with a fresh Server.
 func Run(ctx context.Context, addr string, node *peer.Node) error {
+	return Serve(ctx, addr, NewServer(node))
+}
+
+// Serve starts the gRPC server using the given Server instance.
+// Use this when the caller needs to hold a reference (e.g. to call SetRunner).
+func Serve(ctx context.Context, addr string, s *Server) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
 	srv := grpc.NewServer()
-	clientrpcpb.RegisterPokerNodeServer(srv, NewServer(node))
+	clientrpcpb.RegisterPokerNodeServer(srv, s)
 
 	go func() {
 		<-ctx.Done()

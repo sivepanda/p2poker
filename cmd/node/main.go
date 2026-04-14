@@ -51,18 +51,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// When dispatch sends a game start, spin up the round runner.
-	node.SetGameStartHandler(func(sessionID string, order []string) {
-		fmt.Printf("game starting in session %s, order: %v\n", sessionID, order)
-		runner := round.New(node, node.Store(), order, sk, pk)
-		if err := runner.Run(ctx); err != nil {
-			fmt.Printf("round runner exited: %v\n", err)
-		}
-	})
-
+	var rpcSrv *clientrpc.Server
 	if *rpcAddr != "" {
+		rpcSrv = clientrpc.NewServer(node)
 		go func() {
-			if err := clientrpc.Run(ctx, *rpcAddr, node); err != nil {
+			if err := clientrpc.Serve(ctx, *rpcAddr, rpcSrv); err != nil {
 				fmt.Printf("rpc server failed: %v\n", err)
 			}
 		}()
@@ -70,6 +63,19 @@ func main() {
 	} else {
 		fmt.Println("frontend gRPC disabled (set -rpc-addr to enable)")
 	}
+
+	// When dispatch sends a game start, spin up the round runner.
+	node.SetGameStartHandler(func(sessionID string, order []string) {
+		fmt.Printf("game starting in session %s, order: %v\n", sessionID, order)
+		runner := round.New(node, node.Store(), order, sk, pk)
+		if rpcSrv != nil {
+			rpcSrv.SetRunner(runner)
+			defer rpcSrv.SetRunner(nil)
+		}
+		if err := runner.Run(ctx); err != nil {
+			fmt.Printf("round runner exited: %v\n", err)
+		}
+	})
 
 	if *dispatchAddr != "" {
 		if err := node.AttachDispatch(ctx, *dispatchAddr); err != nil {

@@ -129,7 +129,13 @@ func (r *Runner) runRound(ctx context.Context) error {
 	}
 
 	// Phase 5: cleanup ephemeral files for this round.
+	// We keep our own verify receipt for one extra round so slower peers can
+	// still poll it — a node finishing collectVerifyReceipts doesn't imply
+	// others have finished polling ours.
 	r.cleanup(roundID)
+	if roundID > 0 {
+		r.store.Delete(ephemeral.VerifyKey(roundID-1, r.localID))
+	}
 	return nil
 }
 
@@ -236,6 +242,9 @@ func (r *Runner) collectVerifyReceipts(ctx context.Context, roundID uint64) erro
 func (r *Runner) cleanup(roundID uint64) {
 	r.store.Delete(ephemeral.ProposalKey(roundID))
 	for _, nodeID := range r.order {
+		if nodeID == r.localID {
+			continue
+		}
 		r.store.Delete(ephemeral.VerifyKey(roundID, nodeID))
 	}
 }

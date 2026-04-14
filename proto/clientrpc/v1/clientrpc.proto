@@ -11,6 +11,9 @@ service PokerNode {
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc StartGame(StartGameRequest) returns (StartGameResponse);
 
+  // Gameplay
+  rpc SubmitAction(SubmitActionRequest) returns (SubmitActionResponse);
+
   // Node
   rpc GetNodeInfo(GetNodeInfoRequest) returns (GetNodeInfoResponse);
   rpc AttachDispatch(AttachDispatchRequest) returns (AttachDispatchResponse);
@@ -57,6 +60,21 @@ message ListSessionsResponse {
 
 message StartGameRequest {}
 message StartGameResponse {}
+
+// --- Gameplay ---
+
+enum ActionKind {
+  ACTION_KIND_FOLD = 0;
+  ACTION_KIND_CHECK = 1;
+  ACTION_KIND_CALL = 2;
+  ACTION_KIND_RAISE = 3;
+}
+
+message SubmitActionRequest {
+  ActionKind kind = 1;
+  uint64 amount = 2; // only meaningful for RAISE
+}
+message SubmitActionResponse {}
 
 // --- Node ---
 

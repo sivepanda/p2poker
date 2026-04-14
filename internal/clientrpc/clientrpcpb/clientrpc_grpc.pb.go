@@ -25,6 +25,7 @@ const (
 	PokerNode_ConnectPeers_FullMethodName    = "/clientrpc.v1.PokerNode/ConnectPeers"
 	PokerNode_ListSessions_FullMethodName    = "/clientrpc.v1.PokerNode/ListSessions"
 	PokerNode_StartGame_FullMethodName       = "/clientrpc.v1.PokerNode/StartGame"
+	PokerNode_SubmitAction_FullMethodName    = "/clientrpc.v1.PokerNode/SubmitAction"
 	PokerNode_GetNodeInfo_FullMethodName     = "/clientrpc.v1.PokerNode/GetNodeInfo"
 	PokerNode_AttachDispatch_FullMethodName  = "/clientrpc.v1.PokerNode/AttachDispatch"
 	PokerNode_DetachDispatch_FullMethodName  = "/clientrpc.v1.PokerNode/DetachDispatch"
@@ -42,6 +43,8 @@ type PokerNodeClient interface {
 	ConnectPeers(ctx context.Context, in *ConnectPeersRequest, opts ...grpc.CallOption) (*ConnectPeersResponse, error)
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
 	StartGame(ctx context.Context, in *StartGameRequest, opts ...grpc.CallOption) (*StartGameResponse, error)
+	// Gameplay
+	SubmitAction(ctx context.Context, in *SubmitActionRequest, opts ...grpc.CallOption) (*SubmitActionResponse, error)
 	// Node
 	GetNodeInfo(ctx context.Context, in *GetNodeInfoRequest, opts ...grpc.CallOption) (*GetNodeInfoResponse, error)
 	AttachDispatch(ctx context.Context, in *AttachDispatchRequest, opts ...grpc.CallOption) (*AttachDispatchResponse, error)
@@ -118,6 +121,16 @@ func (c *pokerNodeClient) StartGame(ctx context.Context, in *StartGameRequest, o
 	return out, nil
 }
 
+func (c *pokerNodeClient) SubmitAction(ctx context.Context, in *SubmitActionRequest, opts ...grpc.CallOption) (*SubmitActionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitActionResponse)
+	err := c.cc.Invoke(ctx, PokerNode_SubmitAction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *pokerNodeClient) GetNodeInfo(ctx context.Context, in *GetNodeInfoRequest, opts ...grpc.CallOption) (*GetNodeInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetNodeInfoResponse)
@@ -178,6 +191,8 @@ type PokerNodeServer interface {
 	ConnectPeers(context.Context, *ConnectPeersRequest) (*ConnectPeersResponse, error)
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
 	StartGame(context.Context, *StartGameRequest) (*StartGameResponse, error)
+	// Gameplay
+	SubmitAction(context.Context, *SubmitActionRequest) (*SubmitActionResponse, error)
 	// Node
 	GetNodeInfo(context.Context, *GetNodeInfoRequest) (*GetNodeInfoResponse, error)
 	AttachDispatch(context.Context, *AttachDispatchRequest) (*AttachDispatchResponse, error)
@@ -211,6 +226,9 @@ func (UnimplementedPokerNodeServer) ListSessions(context.Context, *ListSessionsR
 }
 func (UnimplementedPokerNodeServer) StartGame(context.Context, *StartGameRequest) (*StartGameResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartGame not implemented")
+}
+func (UnimplementedPokerNodeServer) SubmitAction(context.Context, *SubmitActionRequest) (*SubmitActionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitAction not implemented")
 }
 func (UnimplementedPokerNodeServer) GetNodeInfo(context.Context, *GetNodeInfoRequest) (*GetNodeInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetNodeInfo not implemented")
@@ -353,6 +371,24 @@ func _PokerNode_StartGame_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PokerNode_SubmitAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitActionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PokerNodeServer).SubmitAction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PokerNode_SubmitAction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PokerNodeServer).SubmitAction(ctx, req.(*SubmitActionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PokerNode_GetNodeInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetNodeInfoRequest)
 	if err := dec(in); err != nil {
@@ -448,6 +484,10 @@ var PokerNode_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartGame",
 			Handler:    _PokerNode_StartGame_Handler,
+		},
+		{
+			MethodName: "SubmitAction",
+			Handler:    _PokerNode_SubmitAction_Handler,
 		},
 		{
 			MethodName: "GetNodeInfo",
