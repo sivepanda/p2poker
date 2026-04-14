@@ -12,8 +12,8 @@ import (
 //
 // Key convention for rounds:
 //
-//	"proposal-{roundID}"             — hosted by the proposer
-//	"{roundID}_verify_{nodeID}"      — hosted by each verifier
+//	"proposal-{roundID}"             - hosted by the proposer
+//	"{roundID}_verify_{nodeID}"      - hosted by each verifier
 type Store struct {
 	mu   sync.RWMutex
 	data map[string][]byte

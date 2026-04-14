@@ -63,6 +63,13 @@ func (n *Node) ListSessions(ctx context.Context) ([]string, error) {
 	return resp.SessionIDs, nil
 }
 
+// StartGame asks dispatch to broadcast game_start to every member of this
+// node's session. Fire-and-forget: dispatch fans out a push frame (including
+// to this node) rather than replying to the caller.
+func (n *Node) StartGame(_ context.Context) error {
+	return n.dispatchSend(protocol.Frame{Kind: protocol.KindGameStart})
+}
+
 // Heartbeat renews this node's dispatch lease.
 func (n *Node) Heartbeat(ctx context.Context) error {
 	resp, err := n.dispatchRequest(ctx, protocol.Frame{Kind: protocol.KindHeartbeatReq})

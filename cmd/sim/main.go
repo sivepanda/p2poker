@@ -1,27 +1,40 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"fmt"
-	"math/big"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/sivepanda/p2poker/internal/sim"
 )
 
 func main() {
-	cfg := sim.Config{
-		NumNodes: 4,
-		Prime:    big.NewInt(13619),
+	dispatchAddr := flag.String("dispatch", "", "dispatch server address (required)")
+	numNodes := flag.Int("n", 4, "number of simulated nodes")
+	sessionID := flag.String("session", "sim-session", "session id to create/join")
+	numRounds := flag.Int("rounds", 3, "number of rounds to simulate")
+	flag.Parse()
+
+	if *dispatchAddr == "" {
+		fmt.Println("usage: sim -dispatch ADDR [-n N] [-session ID] [-rounds K]")
+		os.Exit(2)
 	}
 
-	network, err := sim.NewNetwork(cfg)
-	if err != nil {
-		fmt.Printf("failed to build simulation: %v\n", err)
-		os.Exit(1)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	cfg := sim.RoundsConfig{
+		DispatchAddr: *dispatchAddr,
+		NumNodes:     *numNodes,
+		SessionID:    *sessionID,
+		NumRounds:    *numRounds,
 	}
 
-	if err := network.Run(); err != nil {
-		fmt.Printf("simulation failed: %v\n", err)
+	if err := sim.RunRounds(ctx, cfg); err != nil {
+		fmt.Printf("sim failed: %v\n", err)
 		os.Exit(1)
 	}
 }

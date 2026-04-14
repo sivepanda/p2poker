@@ -70,6 +70,14 @@ func (s *Server) ConnectPeers(ctx context.Context, req *clientrpcpb.ConnectPeers
 	return &clientrpcpb.ConnectPeersResponse{}, nil
 }
 
+// StartGame asks dispatch to broadcast game_start to the caller's session.
+func (s *Server) StartGame(ctx context.Context, req *clientrpcpb.StartGameRequest) (*clientrpcpb.StartGameResponse, error) {
+	if err := s.node.StartGame(ctx); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &clientrpcpb.StartGameResponse{}, nil
+}
+
 // GetNodeInfo "forwards" incoming gRPC request to internal ListSessions, which returns basic identities for the node.
 func (s *Server) GetNodeInfo(ctx context.Context, req *clientrpcpb.GetNodeInfoRequest) (*clientrpcpb.GetNodeInfoResponse, error) {
 	return &clientrpcpb.GetNodeInfoResponse{

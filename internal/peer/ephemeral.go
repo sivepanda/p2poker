@@ -106,7 +106,7 @@ func (n *Node) PollRemote(ctx context.Context, targetID, key string) ([]byte, er
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, err
 			}
-			// Transient error (peer not connected yet, etc.) — retry.
+			// Transient error (peer not connected yet, etc.) - retry.
 		} else if found {
 			return value, nil
 		}

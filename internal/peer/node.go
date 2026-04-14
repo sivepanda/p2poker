@@ -99,7 +99,7 @@ func Connect(ctx context.Context, cfg Config) (*Node, error) {
 		return nil, err
 	}
 	if err := n.AttachDispatch(ctx, cfg.DispatchAddr); err != nil {
-		_ = n.listener.Close()
+		_ = n.Close()
 		return nil, err
 	}
 	return n, nil
@@ -107,7 +107,7 @@ func Connect(ctx context.Context, cfg Config) (*Node, error) {
 
 // AttachDispatch dials the dispatch server, registers this node, and starts
 // the dispatch read loop. Returns ErrAlreadyAttached if the node is already
-// attached — call DetachDispatch first to switch servers.
+// attached: call DetachDispatch first to switch servers.
 func (n *Node) AttachDispatch(ctx context.Context, dispatchAddr string) error {
 	if dispatchAddr == "" {
 		return errors.New("dispatch address must be set")

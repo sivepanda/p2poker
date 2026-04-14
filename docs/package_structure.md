@@ -50,7 +50,7 @@ Key files:
 gRPC server that exposes `peer.Node` methods to frontend UI applications over a local port. Every RPC is a one-line passthrough — the server holds no game logic. `SubscribeEvents` is a server-side stream that pushes incoming P2P messages to the connected frontend in real time.
 
 ### `/internal/clientrpc/clientrpcpb`
-**THIS PACKAGE IS ENTIRELY GENERATED CODE — DO NOT EDIT IT BY HAND.** It is produced by `protoc` from the Protocol Buffer definition at `proto/clientrpc/v1/clientrpc.proto`. Contains message types (`*.pb.go`) and the gRPC server/client interfaces (`*_grpc.pb.go`). Committed to the repo so `go build` works without `protoc` installed. **To change anything here, modify the `.proto` file and regenerate with `make proto`.**
+**THIS PACKAGE IS ENTIRELY GENERATED CODE - DO NOT EDIT IT BY HAND.** It is produced by `protoc` from the Protocol Buffer definition at `proto/clientrpc/v1/clientrpc.proto`. Contains message types (`*.pb.go`) and the gRPC server/client interfaces (`*_grpc.pb.go`). Committed to the repo so `go build` works without `protoc` installed. **To change anything here, modify the `.proto` file and regenerate with `make proto`.**
 
 ## `/internal/protocol`
 Defines the `Frame` struct — the universal wire format for all communication (both dispatch and peer-to-peer). Also declares `Kind` constants for every frame type: register, session create/join, peer list, and heartbeat request/response pairs.

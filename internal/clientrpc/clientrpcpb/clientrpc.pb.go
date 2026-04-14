@@ -489,6 +489,78 @@ func (x *ListSessionsResponse) GetSessionIds() []string {
 	return nil
 }
 
+type StartGameRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartGameRequest) Reset() {
+	*x = StartGameRequest{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartGameRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartGameRequest) ProtoMessage() {}
+
+func (x *StartGameRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartGameRequest.ProtoReflect.Descriptor instead.
+func (*StartGameRequest) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{11}
+}
+
+type StartGameResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartGameResponse) Reset() {
+	*x = StartGameResponse{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartGameResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartGameResponse) ProtoMessage() {}
+
+func (x *StartGameResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartGameResponse.ProtoReflect.Descriptor instead.
+func (*StartGameResponse) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{12}
+}
+
 type GetNodeInfoRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -497,7 +569,7 @@ type GetNodeInfoRequest struct {
 
 func (x *GetNodeInfoRequest) Reset() {
 	*x = GetNodeInfoRequest{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[11]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +581,7 @@ func (x *GetNodeInfoRequest) String() string {
 func (*GetNodeInfoRequest) ProtoMessage() {}
 
 func (x *GetNodeInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[11]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +594,7 @@ func (x *GetNodeInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeInfoRequest.ProtoReflect.Descriptor instead.
 func (*GetNodeInfoRequest) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{11}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{13}
 }
 
 type GetNodeInfoResponse struct {
@@ -537,7 +609,7 @@ type GetNodeInfoResponse struct {
 
 func (x *GetNodeInfoResponse) Reset() {
 	*x = GetNodeInfoResponse{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[12]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -549,7 +621,7 @@ func (x *GetNodeInfoResponse) String() string {
 func (*GetNodeInfoResponse) ProtoMessage() {}
 
 func (x *GetNodeInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[12]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +634,7 @@ func (x *GetNodeInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeInfoResponse.ProtoReflect.Descriptor instead.
 func (*GetNodeInfoResponse) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{12}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetNodeInfoResponse) GetNodeId() string {
@@ -602,7 +674,7 @@ type AttachDispatchRequest struct {
 
 func (x *AttachDispatchRequest) Reset() {
 	*x = AttachDispatchRequest{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[13]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -614,7 +686,7 @@ func (x *AttachDispatchRequest) String() string {
 func (*AttachDispatchRequest) ProtoMessage() {}
 
 func (x *AttachDispatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[13]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -627,7 +699,7 @@ func (x *AttachDispatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachDispatchRequest.ProtoReflect.Descriptor instead.
 func (*AttachDispatchRequest) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{13}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AttachDispatchRequest) GetDispatchAddr() string {
@@ -646,7 +718,7 @@ type AttachDispatchResponse struct {
 
 func (x *AttachDispatchResponse) Reset() {
 	*x = AttachDispatchResponse{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[14]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -658,7 +730,7 @@ func (x *AttachDispatchResponse) String() string {
 func (*AttachDispatchResponse) ProtoMessage() {}
 
 func (x *AttachDispatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[14]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -671,7 +743,7 @@ func (x *AttachDispatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachDispatchResponse.ProtoReflect.Descriptor instead.
 func (*AttachDispatchResponse) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{14}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AttachDispatchResponse) GetNodeId() string {
@@ -689,7 +761,7 @@ type DetachDispatchRequest struct {
 
 func (x *DetachDispatchRequest) Reset() {
 	*x = DetachDispatchRequest{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[15]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -701,7 +773,7 @@ func (x *DetachDispatchRequest) String() string {
 func (*DetachDispatchRequest) ProtoMessage() {}
 
 func (x *DetachDispatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[15]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -714,7 +786,7 @@ func (x *DetachDispatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetachDispatchRequest.ProtoReflect.Descriptor instead.
 func (*DetachDispatchRequest) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{15}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{17}
 }
 
 type DetachDispatchResponse struct {
@@ -725,7 +797,7 @@ type DetachDispatchResponse struct {
 
 func (x *DetachDispatchResponse) Reset() {
 	*x = DetachDispatchResponse{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[16]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -737,7 +809,7 @@ func (x *DetachDispatchResponse) String() string {
 func (*DetachDispatchResponse) ProtoMessage() {}
 
 func (x *DetachDispatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[16]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -750,7 +822,7 @@ func (x *DetachDispatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetachDispatchResponse.ProtoReflect.Descriptor instead.
 func (*DetachDispatchResponse) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{16}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{18}
 }
 
 type SubscribeEventsRequest struct {
@@ -761,7 +833,7 @@ type SubscribeEventsRequest struct {
 
 func (x *SubscribeEventsRequest) Reset() {
 	*x = SubscribeEventsRequest{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[17]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -773,7 +845,7 @@ func (x *SubscribeEventsRequest) String() string {
 func (*SubscribeEventsRequest) ProtoMessage() {}
 
 func (x *SubscribeEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[17]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -786,7 +858,7 @@ func (x *SubscribeEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeEventsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeEventsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{17}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{19}
 }
 
 type Event struct {
@@ -801,7 +873,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[18]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -813,7 +885,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[18]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -826,7 +898,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{18}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Event) GetEvent() isEvent_Event {
@@ -866,7 +938,7 @@ type PeerMessageEvent struct {
 
 func (x *PeerMessageEvent) Reset() {
 	*x = PeerMessageEvent{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[19]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -878,7 +950,7 @@ func (x *PeerMessageEvent) String() string {
 func (*PeerMessageEvent) ProtoMessage() {}
 
 func (x *PeerMessageEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[19]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -891,7 +963,7 @@ func (x *PeerMessageEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeerMessageEvent.ProtoReflect.Descriptor instead.
 func (*PeerMessageEvent) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{19}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PeerMessageEvent) GetFrom() string {
@@ -944,7 +1016,9 @@ const file_proto_clientrpc_v1_clientrpc_proto_rawDesc = "" +
 	"\x13ListSessionsRequest\"7\n" +
 	"\x14ListSessionsResponse\x12\x1f\n" +
 	"\vsession_ids\x18\x01 \x03(\tR\n" +
-	"sessionIds\"\x14\n" +
+	"sessionIds\"\x12\n" +
+	"\x10StartGameRequest\"\x13\n" +
+	"\x11StartGameResponse\"\x14\n" +
 	"\x12GetNodeInfoRequest\"\x8a\x01\n" +
 	"\x13GetNodeInfoResponse\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
@@ -966,13 +1040,14 @@ const file_proto_clientrpc_v1_clientrpc_proto_rawDesc = "" +
 	"\x10PeerMessageEvent\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12!\n" +
 	"\fmessage_type\x18\x02 \x01(\tR\vmessageType\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload2\x93\x06\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload2\xe1\x06\n" +
 	"\tPokerNode\x12X\n" +
 	"\rCreateSession\x12\".clientrpc.v1.CreateSessionRequest\x1a#.clientrpc.v1.CreateSessionResponse\x12R\n" +
 	"\vJoinSession\x12 .clientrpc.v1.JoinSessionRequest\x1a!.clientrpc.v1.JoinSessionResponse\x12L\n" +
 	"\tListPeers\x12\x1e.clientrpc.v1.ListPeersRequest\x1a\x1f.clientrpc.v1.ListPeersResponse\x12U\n" +
 	"\fConnectPeers\x12!.clientrpc.v1.ConnectPeersRequest\x1a\".clientrpc.v1.ConnectPeersResponse\x12U\n" +
-	"\fListSessions\x12!.clientrpc.v1.ListSessionsRequest\x1a\".clientrpc.v1.ListSessionsResponse\x12R\n" +
+	"\fListSessions\x12!.clientrpc.v1.ListSessionsRequest\x1a\".clientrpc.v1.ListSessionsResponse\x12L\n" +
+	"\tStartGame\x12\x1e.clientrpc.v1.StartGameRequest\x1a\x1f.clientrpc.v1.StartGameResponse\x12R\n" +
 	"\vGetNodeInfo\x12 .clientrpc.v1.GetNodeInfoRequest\x1a!.clientrpc.v1.GetNodeInfoResponse\x12[\n" +
 	"\x0eAttachDispatch\x12#.clientrpc.v1.AttachDispatchRequest\x1a$.clientrpc.v1.AttachDispatchResponse\x12[\n" +
 	"\x0eDetachDispatch\x12#.clientrpc.v1.DetachDispatchRequest\x1a$.clientrpc.v1.DetachDispatchResponse\x12N\n" +
@@ -990,7 +1065,7 @@ func file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP() []byte {
 	return file_proto_clientrpc_v1_clientrpc_proto_rawDescData
 }
 
-var file_proto_clientrpc_v1_clientrpc_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_proto_clientrpc_v1_clientrpc_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_proto_clientrpc_v1_clientrpc_proto_goTypes = []any{
 	(*CreateSessionRequest)(nil),   // 0: clientrpc.v1.CreateSessionRequest
 	(*CreateSessionResponse)(nil),  // 1: clientrpc.v1.CreateSessionResponse
@@ -1003,39 +1078,43 @@ var file_proto_clientrpc_v1_clientrpc_proto_goTypes = []any{
 	(*ConnectPeersResponse)(nil),   // 8: clientrpc.v1.ConnectPeersResponse
 	(*ListSessionsRequest)(nil),    // 9: clientrpc.v1.ListSessionsRequest
 	(*ListSessionsResponse)(nil),   // 10: clientrpc.v1.ListSessionsResponse
-	(*GetNodeInfoRequest)(nil),     // 11: clientrpc.v1.GetNodeInfoRequest
-	(*GetNodeInfoResponse)(nil),    // 12: clientrpc.v1.GetNodeInfoResponse
-	(*AttachDispatchRequest)(nil),  // 13: clientrpc.v1.AttachDispatchRequest
-	(*AttachDispatchResponse)(nil), // 14: clientrpc.v1.AttachDispatchResponse
-	(*DetachDispatchRequest)(nil),  // 15: clientrpc.v1.DetachDispatchRequest
-	(*DetachDispatchResponse)(nil), // 16: clientrpc.v1.DetachDispatchResponse
-	(*SubscribeEventsRequest)(nil), // 17: clientrpc.v1.SubscribeEventsRequest
-	(*Event)(nil),                  // 18: clientrpc.v1.Event
-	(*PeerMessageEvent)(nil),       // 19: clientrpc.v1.PeerMessageEvent
+	(*StartGameRequest)(nil),       // 11: clientrpc.v1.StartGameRequest
+	(*StartGameResponse)(nil),      // 12: clientrpc.v1.StartGameResponse
+	(*GetNodeInfoRequest)(nil),     // 13: clientrpc.v1.GetNodeInfoRequest
+	(*GetNodeInfoResponse)(nil),    // 14: clientrpc.v1.GetNodeInfoResponse
+	(*AttachDispatchRequest)(nil),  // 15: clientrpc.v1.AttachDispatchRequest
+	(*AttachDispatchResponse)(nil), // 16: clientrpc.v1.AttachDispatchResponse
+	(*DetachDispatchRequest)(nil),  // 17: clientrpc.v1.DetachDispatchRequest
+	(*DetachDispatchResponse)(nil), // 18: clientrpc.v1.DetachDispatchResponse
+	(*SubscribeEventsRequest)(nil), // 19: clientrpc.v1.SubscribeEventsRequest
+	(*Event)(nil),                  // 20: clientrpc.v1.Event
+	(*PeerMessageEvent)(nil),       // 21: clientrpc.v1.PeerMessageEvent
 }
 var file_proto_clientrpc_v1_clientrpc_proto_depIdxs = []int32{
 	6,  // 0: clientrpc.v1.ListPeersResponse.peers:type_name -> clientrpc.v1.PeerInfo
-	19, // 1: clientrpc.v1.Event.peer_message:type_name -> clientrpc.v1.PeerMessageEvent
+	21, // 1: clientrpc.v1.Event.peer_message:type_name -> clientrpc.v1.PeerMessageEvent
 	0,  // 2: clientrpc.v1.PokerNode.CreateSession:input_type -> clientrpc.v1.CreateSessionRequest
 	2,  // 3: clientrpc.v1.PokerNode.JoinSession:input_type -> clientrpc.v1.JoinSessionRequest
 	4,  // 4: clientrpc.v1.PokerNode.ListPeers:input_type -> clientrpc.v1.ListPeersRequest
 	7,  // 5: clientrpc.v1.PokerNode.ConnectPeers:input_type -> clientrpc.v1.ConnectPeersRequest
 	9,  // 6: clientrpc.v1.PokerNode.ListSessions:input_type -> clientrpc.v1.ListSessionsRequest
-	11, // 7: clientrpc.v1.PokerNode.GetNodeInfo:input_type -> clientrpc.v1.GetNodeInfoRequest
-	13, // 8: clientrpc.v1.PokerNode.AttachDispatch:input_type -> clientrpc.v1.AttachDispatchRequest
-	15, // 9: clientrpc.v1.PokerNode.DetachDispatch:input_type -> clientrpc.v1.DetachDispatchRequest
-	17, // 10: clientrpc.v1.PokerNode.SubscribeEvents:input_type -> clientrpc.v1.SubscribeEventsRequest
-	1,  // 11: clientrpc.v1.PokerNode.CreateSession:output_type -> clientrpc.v1.CreateSessionResponse
-	3,  // 12: clientrpc.v1.PokerNode.JoinSession:output_type -> clientrpc.v1.JoinSessionResponse
-	5,  // 13: clientrpc.v1.PokerNode.ListPeers:output_type -> clientrpc.v1.ListPeersResponse
-	8,  // 14: clientrpc.v1.PokerNode.ConnectPeers:output_type -> clientrpc.v1.ConnectPeersResponse
-	10, // 15: clientrpc.v1.PokerNode.ListSessions:output_type -> clientrpc.v1.ListSessionsResponse
-	12, // 16: clientrpc.v1.PokerNode.GetNodeInfo:output_type -> clientrpc.v1.GetNodeInfoResponse
-	14, // 17: clientrpc.v1.PokerNode.AttachDispatch:output_type -> clientrpc.v1.AttachDispatchResponse
-	16, // 18: clientrpc.v1.PokerNode.DetachDispatch:output_type -> clientrpc.v1.DetachDispatchResponse
-	18, // 19: clientrpc.v1.PokerNode.SubscribeEvents:output_type -> clientrpc.v1.Event
-	11, // [11:20] is the sub-list for method output_type
-	2,  // [2:11] is the sub-list for method input_type
+	11, // 7: clientrpc.v1.PokerNode.StartGame:input_type -> clientrpc.v1.StartGameRequest
+	13, // 8: clientrpc.v1.PokerNode.GetNodeInfo:input_type -> clientrpc.v1.GetNodeInfoRequest
+	15, // 9: clientrpc.v1.PokerNode.AttachDispatch:input_type -> clientrpc.v1.AttachDispatchRequest
+	17, // 10: clientrpc.v1.PokerNode.DetachDispatch:input_type -> clientrpc.v1.DetachDispatchRequest
+	19, // 11: clientrpc.v1.PokerNode.SubscribeEvents:input_type -> clientrpc.v1.SubscribeEventsRequest
+	1,  // 12: clientrpc.v1.PokerNode.CreateSession:output_type -> clientrpc.v1.CreateSessionResponse
+	3,  // 13: clientrpc.v1.PokerNode.JoinSession:output_type -> clientrpc.v1.JoinSessionResponse
+	5,  // 14: clientrpc.v1.PokerNode.ListPeers:output_type -> clientrpc.v1.ListPeersResponse
+	8,  // 15: clientrpc.v1.PokerNode.ConnectPeers:output_type -> clientrpc.v1.ConnectPeersResponse
+	10, // 16: clientrpc.v1.PokerNode.ListSessions:output_type -> clientrpc.v1.ListSessionsResponse
+	12, // 17: clientrpc.v1.PokerNode.StartGame:output_type -> clientrpc.v1.StartGameResponse
+	14, // 18: clientrpc.v1.PokerNode.GetNodeInfo:output_type -> clientrpc.v1.GetNodeInfoResponse
+	16, // 19: clientrpc.v1.PokerNode.AttachDispatch:output_type -> clientrpc.v1.AttachDispatchResponse
+	18, // 20: clientrpc.v1.PokerNode.DetachDispatch:output_type -> clientrpc.v1.DetachDispatchResponse
+	20, // 21: clientrpc.v1.PokerNode.SubscribeEvents:output_type -> clientrpc.v1.Event
+	12, // [12:22] is the sub-list for method output_type
+	2,  // [2:12] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -1046,7 +1125,7 @@ func file_proto_clientrpc_v1_clientrpc_proto_init() {
 	if File_proto_clientrpc_v1_clientrpc_proto != nil {
 		return
 	}
-	file_proto_clientrpc_v1_clientrpc_proto_msgTypes[18].OneofWrappers = []any{
+	file_proto_clientrpc_v1_clientrpc_proto_msgTypes[20].OneofWrappers = []any{
 		(*Event_PeerMessage)(nil),
 	}
 	type x struct{}
@@ -1055,7 +1134,7 @@ func file_proto_clientrpc_v1_clientrpc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_clientrpc_v1_clientrpc_proto_rawDesc), len(file_proto_clientrpc_v1_clientrpc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

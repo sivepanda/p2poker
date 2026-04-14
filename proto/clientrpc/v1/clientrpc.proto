@@ -9,6 +9,7 @@ service PokerNode {
   rpc ListPeers(ListPeersRequest) returns (ListPeersResponse);
   rpc ConnectPeers(ConnectPeersRequest) returns (ConnectPeersResponse);
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc StartGame(StartGameRequest) returns (StartGameResponse);
 
   // Node
   rpc GetNodeInfo(GetNodeInfoRequest) returns (GetNodeInfoResponse);
@@ -53,6 +54,9 @@ message ListSessionsRequest {}
 message ListSessionsResponse {
   repeated string session_ids = 1;
 }
+
+message StartGameRequest {}
+message StartGameResponse {}
 
 // --- Node ---
 
