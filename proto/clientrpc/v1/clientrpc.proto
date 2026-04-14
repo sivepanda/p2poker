@@ -12,6 +12,8 @@ service PokerNode {
 
   // Node
   rpc GetNodeInfo(GetNodeInfoRequest) returns (GetNodeInfoResponse);
+  rpc AttachDispatch(AttachDispatchRequest) returns (AttachDispatchResponse);
+  rpc DetachDispatch(DetachDispatchRequest) returns (DetachDispatchResponse);
 
   // Events — server-side stream, frontend subscribes once
   rpc SubscribeEvents(SubscribeEventsRequest) returns (stream Event);
@@ -59,7 +61,18 @@ message GetNodeInfoResponse {
   string node_id = 1;
   string listen_addr = 2;
   string session_id = 3;
+  bool attached = 4;
 }
+
+message AttachDispatchRequest {
+  string dispatch_addr = 1;
+}
+message AttachDispatchResponse {
+  string node_id = 1;
+}
+
+message DetachDispatchRequest {}
+message DetachDispatchResponse {}
 
 // --- Events ---
 

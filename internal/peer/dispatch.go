@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sivepanda/p2poker/internal/protocol"
+	"github.com/sivepanda/p2poker/internal/transport"
 )
 
 // CreateSession asks dispatch to create (or name) a session.
@@ -74,7 +75,8 @@ func (n *Node) Heartbeat(ctx context.Context) error {
 	return nil
 }
 
-// StartHeartbeat launches periodic lease renewals.
+// StartHeartbeat launches periodic lease renewals. Ticks while attached;
+// silently skips when the node is detached.
 func (n *Node) StartHeartbeat(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		interval = 2 * time.Second
@@ -88,6 +90,9 @@ func (n *Node) StartHeartbeat(ctx context.Context, interval time.Duration) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				if !n.IsAttached() {
+					continue
+				}
 				beatCtx, cancel := context.WithTimeout(context.Background(), interval)
 				_ = n.Heartbeat(beatCtx)
 				cancel()
@@ -98,6 +103,10 @@ func (n *Node) StartHeartbeat(ctx context.Context, interval time.Duration) {
 
 // dispatchRequest sends a frame and waits for its response.
 func (n *Node) dispatchRequest(ctx context.Context, frame protocol.Frame) (protocol.Frame, error) {
+	if !n.IsAttached() {
+		return protocol.Frame{}, errNotAttached
+	}
+
 	requestID := n.nextRequestID()
 	frame.RequestID = requestID
 
@@ -113,7 +122,7 @@ func (n *Node) dispatchRequest(ctx context.Context, frame protocol.Frame) (proto
 		n.pendingMu.Unlock()
 	}()
 
-	if err := n.dispatchConn.Send(frame); err != nil {
+	if err := n.dispatchSend(frame); err != nil {
 		return protocol.Frame{}, err
 	}
 
@@ -128,10 +137,12 @@ func (n *Node) dispatchRequest(ctx context.Context, frame protocol.Frame) (proto
 	}
 }
 
-// dispatchReadLoop routes dispatch responses to waiting callers.
-func (n *Node) dispatchReadLoop() {
+// dispatchReadLoop routes dispatch responses to waiting callers. The conn is
+// captured at goroutine start so a Detach + Attach can spawn a new loop on a
+// new connection without racing on n.dispatchConn.
+func (n *Node) dispatchReadLoop(conn *transport.GobConn) {
 	for {
-		frame, err := n.dispatchConn.Receive()
+		frame, err := conn.Receive()
 		if err != nil {
 			n.closeAllPending()
 			return
@@ -171,5 +182,5 @@ func (n *Node) closeAllPending() {
 // nextRequestID generates a unique request ID for dispatch calls.
 func (n *Node) nextRequestID() string {
 	v := atomic.AddUint64(&n.requestCounter, 1)
-	return fmt.Sprintf("%s-%d", n.id, v)
+	return fmt.Sprintf("%s-%d", n.ID(), v)
 }

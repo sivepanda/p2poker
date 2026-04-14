@@ -40,7 +40,7 @@ func (n *Node) Send(targetID, messageType string, payload any) error {
 
 	return pc.Send(protocol.Frame{
 		Kind:        KindPeerMessage,
-		NodeID:      n.id,
+		NodeID:      n.ID(),
 		MessageType: messageType,
 		Payload:     buf,
 	})
@@ -55,7 +55,7 @@ func (n *Node) Broadcast(messageType string, payload any) error {
 
 	frame := protocol.Frame{
 		Kind:        KindPeerMessage,
-		NodeID:      n.id,
+		NodeID:      n.ID(),
 		MessageType: messageType,
 		Payload:     buf,
 	}

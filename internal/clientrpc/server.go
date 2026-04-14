@@ -2,6 +2,7 @@ package clientrpc
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"google.golang.org/grpc"
@@ -75,7 +76,28 @@ func (s *Server) GetNodeInfo(ctx context.Context, req *clientrpcpb.GetNodeInfoRe
 		NodeId:     s.node.ID(),
 		ListenAddr: s.node.ListenAddr(),
 		SessionId:  s.node.SessionID(),
+		Attached:   s.node.IsAttached(),
 	}, nil
+}
+
+// AttachDispatch dials the given dispatch server and registers this node.
+// Returns FailedPrecondition if the node is already attached.
+func (s *Server) AttachDispatch(ctx context.Context, req *clientrpcpb.AttachDispatchRequest) (*clientrpcpb.AttachDispatchResponse, error) {
+	if err := s.node.AttachDispatch(ctx, req.DispatchAddr); err != nil {
+		if errors.Is(err, peer.ErrAlreadyAttached) {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &clientrpcpb.AttachDispatchResponse{NodeId: s.node.ID()}, nil
+}
+
+// DetachDispatch closes the dispatch connection and tears down the peer mesh.
+func (s *Server) DetachDispatch(ctx context.Context, req *clientrpcpb.DetachDispatchRequest) (*clientrpcpb.DetachDispatchResponse, error) {
+	if err := s.node.DetachDispatch(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &clientrpcpb.DetachDispatchResponse{}, nil
 }
 
 // SubscribeEvents streams incoming peer messages to the client.

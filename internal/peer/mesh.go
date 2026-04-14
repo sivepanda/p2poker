@@ -17,8 +17,9 @@ func (n *Node) ConnectToPeers(ctx context.Context) error {
 		return fmt.Errorf("list peers: %w", err)
 	}
 
+	selfID := n.ID()
 	for _, p := range peers {
-		if p.ID == n.id {
+		if p.ID == selfID {
 			continue
 		}
 
@@ -66,7 +67,7 @@ func (n *Node) handleIncomingPeer(conn *transport.GobConn) {
 
 	if err := conn.Send(protocol.Frame{
 		Kind:   KindPeerHandshake,
-		NodeID: n.id,
+		NodeID: n.ID(),
 	}); err != nil {
 		_ = conn.Close()
 		return
@@ -91,7 +92,7 @@ func (n *Node) dialPeer(ctx context.Context, peerID, addr string) error {
 
 	if err := conn.Send(protocol.Frame{
 		Kind:   KindPeerHandshake,
-		NodeID: n.id,
+		NodeID: n.ID(),
 	}); err != nil {
 		_ = conn.Close()
 		return fmt.Errorf("handshake send: %w", err)
