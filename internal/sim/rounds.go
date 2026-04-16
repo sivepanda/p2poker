@@ -51,7 +51,6 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		if err != nil {
 			return fmt.Errorf("node %d new: %w", i, err)
 		}
-		n.InitEphemeralHandlers()
 		if err := n.AttachDispatch(ctx, cfg.DispatchAddr); err != nil {
 			return fmt.Errorf("node %d attach: %w", i, err)
 		}
@@ -90,6 +89,20 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		}
 	}
 
+	// Dispatch sorts member IDs before broadcasting game_start; mirror that.
+	order := make([]string, cfg.NumNodes)
+	for i, n := range nodes {
+		order[i] = n.ID()
+	}
+	sort.Strings(order)
+	fmt.Printf("[sim] %d nodes joined, waiting for dispatch game_start...\n", cfg.NumNodes)
+	startGameErr := nodes[0].StartGame(ctx)
+	if startGameErr != nil {
+		return startGameErr
+	}
+	fmt.Printf("[sim] game_start received, order: %v\n", order)
+	time.Sleep(1000)
+
 	// Register game_start handlers that build+run a Runner per node.
 	runners := make([]*round.Runner, cfg.NumNodes)
 	runnerReady := make([]chan struct{}, cfg.NumNodes)
@@ -101,22 +114,10 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		n := nodes[i]
 		idx := i
 		runnerReady[idx] = make(chan struct{})
-		orderCh := make(chan []string, 1)
-		n.SetGameStartHandler(func(_ string, order []string) {
-			select {
-			case orderCh <- order:
-			default:
-			}
-		})
+
 		runnerWG.Add(1)
 		go func() {
 			defer runnerWG.Done()
-			var order []string
-			select {
-			case <-runCtx.Done():
-				return
-			case order = <-orderCh:
-			}
 			r := round.New(n, n.Store(), order, sks[idx], pks[idx])
 			runners[idx] = r
 			close(runnerReady[idx])
@@ -124,12 +125,6 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 				fmt.Printf("[sim] runner %s exited: %v\n", n.ID(), err)
 			}
 		}()
-	}
-
-	fmt.Printf("[sim] %d nodes joined, waiting for dispatch game_start...\n", cfg.NumNodes)
-	startGameErr := nodes[0].StartGame(ctx)
-	if startGameErr != nil {
-		return startGameErr
 	}
 
 	// Wait until every runner has been constructed (game_start delivered).
@@ -140,14 +135,6 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		case <-runnerReady[i]:
 		}
 	}
-
-	// Dispatch sorts member IDs before broadcasting game_start; mirror that.
-	order := make([]string, cfg.NumNodes)
-	for i, n := range nodes {
-		order[i] = n.ID()
-	}
-	sort.Strings(order)
-	fmt.Printf("[sim] game_start received, order: %v\n", order)
 
 	// Drive rounds: each round's proposer submits Check; all nodes advance.
 	for r := 0; r < cfg.NumRounds; r++ {
@@ -171,7 +158,7 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		if err := runners[localIdx].SubmitAction(game.Action{Kind: game.ActionCheck}); err != nil {
 			return fmt.Errorf("round %d submit: %w", r, err)
 		}
-		fmt.Printf("[sim] round %d: proposer %s submitted Check\n", r, proposerID)
+		fmt.Printf("[sim] round %d: proposer %s queued Check\n", r, proposerID)
 
 		for _, rn := range runners {
 			if err := waitForRound(runCtx, rn, uint64(r+1)); err != nil {

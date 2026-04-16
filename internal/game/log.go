@@ -1,10 +1,12 @@
 package game
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
 )
@@ -169,7 +171,28 @@ func (l *Log) BuildVerifyReceipt(playerID uint8, sk ed25519.PrivateKey) VerifyRe
 // VerifyVerifyReceipt checks RoundID, PostLogHash matches our log, and sig.
 // Stubbed to always pass for now.
 func (l *Log) VerifyVerifyReceipt(r VerifyReceipt, pk ed25519.PublicKey) error {
-	// TODO: verify r.PostLogHash == l.Hash()
-	// TODO: verify signature
+	// 1. Basic Round Check
+	if r.RoundID != l.RoundID()-1 {
+		return fmt.Errorf("receipt round mismatch: got %d, want %d", r.RoundID, l.RoundID()-1)
+	}
+
+	// 2. Hash Consistency Check (CRITICAL)
+	if !bytes.Equal(r.PostLogHash, l.Hash()) {
+		return fmt.Errorf("receipt hash does not match local log state")
+	}
+
+	// 3. Reconstruct the exact same payload used in Build
+	payload := make([]byte, 0, len(r.PostLogHash)+14)
+	payload = append(payload, r.PostLogHash...)
+	payload = append(payload, "verify"...)
+	roundBuf := [8]byte{}
+	binary.BigEndian.PutUint64(roundBuf[:], r.RoundID)
+	payload = append(payload, roundBuf[:]...)
+
+	// 4. Crypto Verification
+	if !cryptolog.Verify(pk, payload, r.Signature) {
+		return fmt.Errorf("invalid signature from player %d", r.PlayerID)
+	}
+
 	return nil
 }

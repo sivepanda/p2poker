@@ -23,6 +23,9 @@ func (n *Node) CreateSession(ctx context.Context, sessionID string) (string, err
 	if !resp.Success {
 		return "", errors.New(resp.Error)
 	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
 
 	n.mu.Lock()
 	n.session = resp.SessionID
@@ -168,9 +171,7 @@ func (n *Node) dispatchReadLoop(conn *transport.GobConn) {
 		// Handle push frames from dispatch (no RequestID).
 		switch frame.Kind {
 		case protocol.KindGameStart:
-			if n.onGameStart != nil {
-				go n.onGameStart(frame.SessionID, frame.PeerIDs)
-			}
+			n.GameStart(frame)
 		}
 	}
 }

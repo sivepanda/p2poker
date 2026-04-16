@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"net"
 	"sync"
 
+	"github.com/sivepanda/p2poker/internal/crypto/deck"
 	"github.com/sivepanda/p2poker/internal/ephemeral"
 	"github.com/sivepanda/p2poker/internal/protocol"
 	"github.com/sivepanda/p2poker/internal/transport"
@@ -16,6 +18,9 @@ const (
 	KindPeerHandshake = "peer_handshake"
 	KindPeerMessage   = "peer_message"
 )
+
+// PRIME for shuffle deal
+var PRIME *big.Int = big.NewInt(13619)
 
 // ErrAlreadyAttached is returned when AttachDispatch is called on a node that
 // is already attached to a dispatch server.
@@ -38,7 +43,6 @@ type Node struct {
 	dispatchMu   sync.RWMutex
 	id           string
 	dispatchConn *transport.GobConn
-	dispatchRaw  net.Conn
 
 	listener net.Listener
 
@@ -61,6 +65,20 @@ type Node struct {
 	peerPending   map[string]chan EphemeralReadResponse
 
 	onGameStart func(sessionID string, order []string)
+
+	// modKey is this node's SRA key for commutative card encryption/decryption.
+	// prime is the publicly agreed-upon prime all nodes share.
+	modKey *deck.Key
+	prime  *big.Int
+
+	//GAME STATE
+	Started   bool
+	FinalDeck [][]byte
+	Order     []string
+	SeatIdx   int
+	card1     string
+	card2     string
+	money     int
 }
 
 // New constructs a node and starts its peer listener, but does NOT attach to a
@@ -75,6 +93,11 @@ func New(cfg Config) (*Node, error) {
 		return nil, fmt.Errorf("peer listen: %w", err)
 	}
 
+	modKey, err := deck.GenerateKey(PRIME)
+	if err != nil {
+		return nil, fmt.Errorf("issue generating key: %w", err)
+	}
+
 	n := &Node{
 		peerAddr:    ln.Addr().String(),
 		prefNodeID:  cfg.NodeID,
@@ -84,6 +107,8 @@ func New(cfg Config) (*Node, error) {
 		handlers:    make(map[string]Handler),
 		store:       ephemeral.New(),
 		peerPending: make(map[string]chan EphemeralReadResponse),
+		modKey:      modKey,
+		prime:       PRIME,
 	}
 
 	go n.acceptPeers()
@@ -159,7 +184,6 @@ func (n *Node) AttachDispatch(ctx context.Context, dispatchAddr string) error {
 	}
 	n.id = resp.NodeID
 	n.dispatchConn = conn
-	n.dispatchRaw = rawConn
 	n.dispatchMu.Unlock()
 
 	go n.dispatchReadLoop(conn)
@@ -174,7 +198,6 @@ func (n *Node) DetachDispatch() error {
 	n.dispatchMu.Lock()
 	conn := n.dispatchConn
 	n.dispatchConn = nil
-	n.dispatchRaw = nil
 	n.id = ""
 	n.dispatchMu.Unlock()
 
@@ -234,6 +257,7 @@ func (n *Node) Store() *ephemeral.Store {
 // SetGameStartHandler registers a callback for when dispatch sends a game start.
 func (n *Node) SetGameStartHandler(fn func(sessionID string, order []string)) {
 	n.onGameStart = fn
+
 }
 
 // Close kills the node and its network resources.

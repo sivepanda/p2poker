@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/sivepanda/p2poker/internal/ephemeral"
 	"github.com/sivepanda/p2poker/internal/game"
@@ -92,6 +93,28 @@ func (r *Runner) SubmitAction(action game.Action) error {
 
 // Run starts the round lifecycle loop. Blocks until ctx is cancelled.
 func (r *Runner) Run(ctx context.Context) error {
+	for r.node.Started == false {
+		time.Sleep(200 * time.Millisecond)
+	}
+	//before rounds
+	err := r.node.StartShuffle()
+	if err != nil {
+		return err
+	}
+
+	for r.node.FinalDeck == nil {
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	err = r.node.RequestCards()
+	for r.node.NoCardsYet() {
+		time.Sleep(200 * time.Millisecond)
+	}
+	r.node.PrintCards()
+
+	//the sleeps make sure the preconditions are met
+
+	//rounds
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -103,6 +126,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) runRound(ctx context.Context) error {
+	fmt.Printf("[%d] RUN_ROUND # %d\n", r.seatIdx, r.log.RoundID())
 	roundID := r.log.RoundID()
 	role := r.roleForRound(roundID)
 
