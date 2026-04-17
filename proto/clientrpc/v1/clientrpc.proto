@@ -80,6 +80,7 @@ message SubmitActionResponse {}
 message GetCardsRequest {}
 message GetCardsResponse {
   repeated string hand = 1;
+  repeated string flop = 2;
 }
 
 // --- Node ---

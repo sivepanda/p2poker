@@ -740,6 +740,7 @@ func (*GetCardsRequest) Descriptor() ([]byte, []int) {
 type GetCardsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Hand          []string               `protobuf:"bytes,1,rep,name=hand,proto3" json:"hand,omitempty"`
+	Flop          []string               `protobuf:"bytes,2,rep,name=flop,proto3" json:"flop,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -777,6 +778,13 @@ func (*GetCardsResponse) Descriptor() ([]byte, []int) {
 func (x *GetCardsResponse) GetHand() []string {
 	if x != nil {
 		return x.Hand
+	}
+	return nil
+}
+
+func (x *GetCardsResponse) GetFlop() []string {
+	if x != nil {
+		return x.Flop
 	}
 	return nil
 }
@@ -1243,9 +1251,10 @@ const file_proto_clientrpc_v1_clientrpc_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\x18.clientrpc.v1.ActionKindR\x04kind\x12\x16\n" +
 	"\x06amount\x18\x02 \x01(\x04R\x06amount\"\x16\n" +
 	"\x14SubmitActionResponse\"\x11\n" +
-	"\x0fGetCardsRequest\"&\n" +
+	"\x0fGetCardsRequest\":\n" +
 	"\x10GetCardsResponse\x12\x12\n" +
-	"\x04hand\x18\x01 \x03(\tR\x04hand\"\x14\n" +
+	"\x04hand\x18\x01 \x03(\tR\x04hand\x12\x12\n" +
+	"\x04flop\x18\x02 \x03(\tR\x04flop\"\x14\n" +
 	"\x12GetNodeInfoRequest\"\x8a\x01\n" +
 	"\x13GetNodeInfoResponse\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +

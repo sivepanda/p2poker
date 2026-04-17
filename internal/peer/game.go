@@ -25,6 +25,7 @@ func (n *Node) GameStart(frame protocol.Frame) {
 	n.InitEphemeralHandlers()
 	n.InitShuffleHandlers()
 	n.InitDealHandlers()
+	n.InitCommunityHandlers()
 
 }
 

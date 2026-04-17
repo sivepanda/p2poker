@@ -4,15 +4,16 @@ build:
 	go build -o app ./cmd/sim
 	go build -o dispatch ./cmd/dispatch
 	go build -o node ./cmd/node
+	go build -o sim ./cmd/sim
 
 sim:
-	go run ./cmd/sim
+	go build -o sim ./cmd/sim
 
 dispatch:
-	go run ./cmd/dispatch
+	go build -o dispatch ./cmd/dispatch
 
 node:
-	go run ./cmd/node
+	go build -o node ./cmd/node
 
 proto:
 	protoc --go_out=. --go_opt=module=github.com/sivepanda/p2poker \

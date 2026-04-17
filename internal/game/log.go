@@ -42,12 +42,16 @@ func (e Entry) Bytes() []byte {
 }
 
 type Log struct {
-	entries    []Entry
-	numPlayers uint8
+	entries       []Entry
+	numPlayers    uint8
+	startingStack uint64
 }
 
-func NewLog() *Log {
-	return &Log{}
+func NewLog(numPlayers uint8, startingStack uint64) *Log {
+	return &Log{
+		numPlayers:    numPlayers,
+		startingStack: startingStack,
+	}
 }
 
 // RoundID == len(entries); the round the next proposer signs under.
@@ -78,12 +82,6 @@ func (l *Log) ExpectedNextPlayer() uint8 {
 	// Simple round-robin stub. Real implementation will consider folds,
 	// streets, dealer button, etc.
 	return uint8(l.RoundID() % uint64(l.numPlayers))
-}
-
-// SetNumPlayers configures the player count for turn order.
-// Called once during game setup (from the node order in entry 0).
-func (l *Log) SetNumPlayers(n uint8) {
-	l.numPlayers = n
 }
 
 // NumPlayers returns the configured player count.
@@ -134,8 +132,12 @@ func (l *Log) VerifyProposal(p Entry, pk ed25519.PublicKey) error {
 		return errors.New("round id mismatch")
 	}
 	// TODO: check p.PlayerID == l.ExpectedNextPlayer() once rules engine exists
-	// TODO: check action legality
 	// TODO: verify signature: cryptolog.Verify(pk, append(l.Bytes(), p.Action.Bytes()...), p.Signature)
+
+	state := Replay(l.entries, l.numPlayers, l.startingStack)
+	if err := state.ValidateAction(p.PlayerID, p.Action); err != nil {
+		return fmt.Errorf("illegal action: %w", err)
+	}
 	return nil
 }
 

@@ -136,8 +136,21 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		}
 	}
 
-	// Drive rounds: each round's proposer submits Check; all nodes advance.
-	for r := 0; r < cfg.NumRounds; r++ {
+	// Scripted actions: valid sequence then an illegal raise (exceeds stack).
+	actions := []game.Action{
+		{Kind: game.ActionRaise, Amount: 100},  // round 0: raise to 100
+		{Kind: game.ActionCall},                // round 1: call
+		{Kind: game.ActionRaise, Amount: 500},  // round 2: raise to 500
+		{Kind: game.ActionCall},                // round 3: call
+		{Kind: game.ActionRaise, Amount: 9999}, // round 4: ILLEGAL — exceeds stack
+	}
+
+	numRounds := cfg.NumRounds
+	if numRounds > len(actions) {
+		numRounds = len(actions)
+	}
+
+	for r := 0; r < numRounds; r++ {
 		proposerID := order[r%len(order)]
 
 		localIdx := -1
@@ -155,10 +168,11 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 			return err
 		}
 
-		if err := runners[localIdx].SubmitAction(game.Action{Kind: game.ActionCheck}); err != nil {
+		action := actions[r]
+		if err := runners[localIdx].SubmitAction(action); err != nil {
 			return fmt.Errorf("round %d submit: %w", r, err)
 		}
-		fmt.Printf("[sim] round %d: proposer %s queued Check\n", r, proposerID)
+		fmt.Printf("[sim] round %d: proposer %s queued %v\n", r, proposerID, action)
 
 		for _, rn := range runners {
 			if err := waitForRound(runCtx, rn, uint64(r+1)); err != nil {

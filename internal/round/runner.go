@@ -44,8 +44,7 @@ func New(
 	sk ed25519.PrivateKey,
 	pk ed25519.PublicKey,
 ) *Runner {
-	gameLog := game.NewLog()
-	gameLog.SetNumPlayers(uint8(len(node.Order)))
+	gameLog := game.NewLog(uint8(len(node.Order)), uint64(node.Money()))
 
 	return &Runner{
 		node:     node,
@@ -96,7 +95,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.node.PrintCards()
 
-	//the sleeps make sure the preconditions are met
+	// Seat 0 initiates the flop reveal once all hole cards are dealt.
+	if r.node.SeatIdx == 0 {
+		if err := r.node.RevealFlop(); err != nil {
+			return fmt.Errorf("reveal flop: %w", err)
+		}
+	}
+	for r.node.CommunityCount() < 3 {
+		time.Sleep(200 * time.Millisecond)
+	}
+	r.node.PrintCommunity()
 
 	//rounds
 	for {

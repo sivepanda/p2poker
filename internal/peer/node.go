@@ -79,6 +79,9 @@ type Node struct {
 	card1     string
 	card2     string
 	money     int
+
+	communityMu sync.RWMutex
+	community   []string
 }
 
 // New constructs a node and starts its peer listener, but does NOT attach to a
@@ -95,6 +98,7 @@ func New(cfg Config) (*Node, error) {
 
 	modKey, err := deck.GenerateKey(PRIME)
 	if err != nil {
+		_ = ln.Close()
 		return nil, fmt.Errorf("issue generating key: %w", err)
 	}
 
@@ -235,6 +239,11 @@ func (n *Node) ID() string {
 	n.dispatchMu.RLock()
 	defer n.dispatchMu.RUnlock()
 	return n.id
+}
+
+// Money returns the node's starting chip count.
+func (n *Node) Money() int {
+	return n.money
 }
 
 // ListenAddr exposes the node's peer address.

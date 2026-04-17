@@ -121,7 +121,7 @@ func (s *Server) SubmitAction(ctx context.Context, req *clientrpcpb.SubmitAction
 	return &clientrpcpb.SubmitActionResponse{}, nil
 }
 
-// GetCards returns this node's hole cards.
+// GetCards returns this node's hole cards and the flop (first 3 community cards).
 func (s *Server) GetCards(ctx context.Context, req *clientrpcpb.GetCardsRequest) (*clientrpcpb.GetCardsResponse, error) {
 	c1, c2 := s.node.HoleCards()
 	hand := []string{}
@@ -131,7 +131,11 @@ func (s *Server) GetCards(ctx context.Context, req *clientrpcpb.GetCardsRequest)
 	if c2 != "" {
 		hand = append(hand, c2)
 	}
-	return &clientrpcpb.GetCardsResponse{Hand: hand}, nil
+	community := s.node.CommunityCards()
+	if len(community) > 3 {
+		community = community[:3]
+	}
+	return &clientrpcpb.GetCardsResponse{Hand: hand, Flop: community}, nil
 }
 
 // GetNodeInfo "forwards" incoming gRPC request to internal ListSessions, which returns basic identities for the node.
