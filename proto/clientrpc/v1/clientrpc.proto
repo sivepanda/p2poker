@@ -13,6 +13,7 @@ service PokerNode {
 
   // Gameplay
   rpc SubmitAction(SubmitActionRequest) returns (SubmitActionResponse);
+  rpc GetCards(GetCardsRequest) returns (GetCardsResponse);
 
   // Node
   rpc GetNodeInfo(GetNodeInfoRequest) returns (GetNodeInfoResponse);
@@ -75,6 +76,11 @@ message SubmitActionRequest {
   uint64 amount = 2; // only meaningful for RAISE
 }
 message SubmitActionResponse {}
+
+message GetCardsRequest {}
+message GetCardsResponse {
+  repeated string hand = 1;
+}
 
 // --- Node ---
 

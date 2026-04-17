@@ -121,6 +121,19 @@ func (s *Server) SubmitAction(ctx context.Context, req *clientrpcpb.SubmitAction
 	return &clientrpcpb.SubmitActionResponse{}, nil
 }
 
+// GetCards returns this node's hole cards.
+func (s *Server) GetCards(ctx context.Context, req *clientrpcpb.GetCardsRequest) (*clientrpcpb.GetCardsResponse, error) {
+	c1, c2 := s.node.HoleCards()
+	hand := []string{}
+	if c1 != "" {
+		hand = append(hand, c1)
+	}
+	if c2 != "" {
+		hand = append(hand, c2)
+	}
+	return &clientrpcpb.GetCardsResponse{Hand: hand}, nil
+}
+
 // GetNodeInfo "forwards" incoming gRPC request to internal ListSessions, which returns basic identities for the node.
 func (s *Server) GetNodeInfo(ctx context.Context, req *clientrpcpb.GetNodeInfoRequest) (*clientrpcpb.GetNodeInfoResponse, error) {
 	return &clientrpcpb.GetNodeInfoResponse{
