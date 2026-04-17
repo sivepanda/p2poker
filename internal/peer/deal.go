@@ -89,6 +89,12 @@ func (n *Node) NoCardsYet() bool {
 	return n.card1 == "" || n.card2 == ""
 }
 
+// HoleCards returns this node's two hole cards. Either may be empty if the
+// deal relay has not yet completed.
+func (n *Node) HoleCards() (string, string) {
+	return n.card1, n.card2
+}
+
 func (n *Node) PrintCards() {
 	if n.NoCardsYet() {
 		fmt.Printf("[%s] Hole Cards: [Waiting for deal...]\n", n.id)
