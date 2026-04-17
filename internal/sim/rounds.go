@@ -118,7 +118,7 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		runnerWG.Add(1)
 		go func() {
 			defer runnerWG.Done()
-			r := round.New(n, n.Store(), order, sks[idx], pks[idx])
+			r := round.New(n, n.Store(), sks[idx], pks[idx])
 			runners[idx] = r
 			close(runnerReady[idx])
 			if err := r.Run(runCtx); err != nil && !errors.Is(err, context.Canceled) {

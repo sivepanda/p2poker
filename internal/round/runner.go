@@ -27,12 +27,9 @@ const (
 
 // Runner orchestrates the propose/verify/commit lifecycle for one node.
 type Runner struct {
-	node    *peer.Node
-	store   *ephemeral.Store
-	log     *game.Log
-	order   []string
-	localID string
-	seatIdx int
+	node  *peer.Node
+	store *ephemeral.Store
+	log   *game.Log
 
 	sk ed25519.PrivateKey
 	pk ed25519.PublicKey
@@ -44,29 +41,16 @@ type Runner struct {
 func New(
 	node *peer.Node,
 	store *ephemeral.Store,
-	order []string,
 	sk ed25519.PrivateKey,
 	pk ed25519.PublicKey,
 ) *Runner {
-	localID := node.ID()
-	seatIdx := -1
-	for i, id := range order {
-		if id == localID {
-			seatIdx = i
-			break
-		}
-	}
-
 	gameLog := game.NewLog()
-	gameLog.SetNumPlayers(uint8(len(order)))
+	gameLog.SetNumPlayers(uint8(len(node.Order)))
 
 	return &Runner{
 		node:     node,
 		store:    store,
 		log:      gameLog,
-		order:    order,
-		localID:  localID,
-		seatIdx:  seatIdx,
 		sk:       sk,
 		pk:       pk,
 		actionCh: make(chan game.Action, 1),
@@ -126,7 +110,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) runRound(ctx context.Context) error {
-	fmt.Printf("[%d] RUN_ROUND # %d\n", r.seatIdx, r.log.RoundID())
+	fmt.Printf("[%d] RUN_ROUND # %d\n", r.node.SeatIdx, r.log.RoundID())
 	roundID := r.log.RoundID()
 	role := r.roleForRound(roundID)
 
@@ -158,21 +142,21 @@ func (r *Runner) runRound(ctx context.Context) error {
 	// others have finished polling ours.
 	r.cleanup(roundID)
 	if roundID > 0 {
-		r.store.Delete(ephemeral.VerifyKey(roundID-1, r.localID))
+		r.store.Delete(ephemeral.VerifyKey(roundID-1, r.node.ID()))
 	}
 	return nil
 }
 
 func (r *Runner) roleForRound(roundID uint64) Role {
-	proposerIdx := int(roundID) % len(r.order)
-	if proposerIdx == r.seatIdx {
+	proposerIdx := int(roundID) % len(r.node.Order)
+	if proposerIdx == r.node.SeatIdx {
 		return RoleProposer
 	}
 	return RoleVerifier
 }
 
 func (r *Runner) proposerForRound(roundID uint64) string {
-	return r.order[int(roundID)%len(r.order)]
+	return r.node.Order[int(roundID)%len(r.node.Order)]
 }
 
 func (r *Runner) obtainProposal(ctx context.Context, roundID uint64, role Role) (game.Entry, error) {
@@ -195,7 +179,7 @@ func (r *Runner) buildAndHostProposal(ctx context.Context, roundID uint64) (game
 	case action = <-r.actionCh:
 	}
 
-	entry := r.log.BuildProposal(uint8(r.seatIdx), action, r.sk)
+	entry := r.log.BuildProposal(uint8(r.node.SeatIdx), action, r.sk)
 
 	data, err := gobEncode(entry)
 	if err != nil {
@@ -224,12 +208,12 @@ func (r *Runner) pollForProposal(ctx context.Context, roundID uint64) (game.Entr
 }
 
 func (r *Runner) hostVerifyReceipt(roundID uint64) error {
-	receipt := r.log.BuildVerifyReceipt(uint8(r.seatIdx), r.sk)
+	receipt := r.log.BuildVerifyReceipt(uint8(r.node.SeatIdx), r.sk)
 	data, err := gobEncode(receipt)
 	if err != nil {
 		return fmt.Errorf("encode verify receipt: %w", err)
 	}
-	r.store.Put(ephemeral.VerifyKey(roundID, r.localID), data)
+	r.store.Put(ephemeral.VerifyKey(roundID, r.node.ID()), data)
 	return nil
 }
 
@@ -241,8 +225,8 @@ func (r *Runner) collectVerifyReceipts(ctx context.Context, roundID uint64) erro
 		wg       sync.WaitGroup
 	)
 
-	for _, nodeID := range r.order {
-		if nodeID == r.localID {
+	for _, nodeID := range r.node.Order {
+		if nodeID == r.node.ID() {
 			continue
 		}
 		wg.Add(1)
@@ -265,8 +249,8 @@ func (r *Runner) collectVerifyReceipts(ctx context.Context, roundID uint64) erro
 
 func (r *Runner) cleanup(roundID uint64) {
 	r.store.Delete(ephemeral.ProposalKey(roundID))
-	for _, nodeID := range r.order {
-		if nodeID == r.localID {
+	for _, nodeID := range r.node.Order {
+		if nodeID == r.node.ID() {
 			continue
 		}
 		r.store.Delete(ephemeral.VerifyKey(roundID, nodeID))
