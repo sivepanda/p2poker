@@ -8,9 +8,6 @@ import (
 
 func (n *Node) GameStart(frame protocol.Frame) {
 	fmt.Printf("[%s] GAME START \n", n.id)
-	if n.onGameStart != nil {
-		go n.onGameStart(frame.SessionID, n.Order)
-	}
 	n.Order = frame.PeerIDs
 	for i, id := range n.Order {
 		if id == n.id {
@@ -20,6 +17,10 @@ func (n *Node) GameStart(frame protocol.Frame) {
 	}
 	n.Started = true
 	n.money = 2000
+
+	if n.onGameStart != nil {
+		go n.onGameStart(frame.SessionID, n.Order)
+	}
 
 	//Init handlers
 	n.InitEphemeralHandlers()

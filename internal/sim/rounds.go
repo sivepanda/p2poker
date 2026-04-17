@@ -101,7 +101,24 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		return startGameErr
 	}
 	fmt.Printf("[sim] game_start received, order: %v\n", order)
-	time.Sleep(1000)
+	// Wait until every node has processed game_start and populated Order.
+	for {
+		allStarted := true
+		for _, n := range nodes {
+			if !n.Started {
+				allStarted = false
+				break
+			}
+		}
+		if allStarted {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 
 	// Register game_start handlers that build+run a Runner per node.
 	runners := make([]*round.Runner, cfg.NumNodes)
