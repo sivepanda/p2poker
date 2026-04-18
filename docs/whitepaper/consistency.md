@@ -22,11 +22,11 @@ The hybrid approach described here fuses these two models. Every player holds a 
 
 The core insight is that a cryptographic signature can do more work than just proving identity. If the signed payload includes not just the action but the hash of the entire log up to that point, then verifying the signature simultaneously proves three things:
 
-1. **Identity** — only the holder of the private key could have produced the signature.
-2. **Consistency** — the signer's log matches the verifier's log, because the hash would differ otherwise.
-3. **Integrity** — the action has not been tampered with in transit.
+1. **Identity** - only the holder of the private key could have produced the signature.
+2. **Consistency** - the signer's log matches the verifier's log, because the hash would differ otherwise.
+3. **Integrity** - the action has not been tampered with in transit.
 
-In the replicated log model, consistency was enforced through a separate verify-file exchange, and identity was deferred to the network layer. In the signed hot-potato model, identity was cryptographically guaranteed but consistency was only checked when the log arrived at your door. Here, both properties are proven on every single turn, by every player, as a single atomic operation. There is no separate audit step — the audit is the signature.
+In the replicated log model, consistency was enforced through a separate verify-file exchange, and identity was deferred to the network layer. In the signed hot-potato model, identity was cryptographically guaranteed but consistency was only checked when the log arrived at your door. Here, both properties are proven on every single turn, by every player, as a single atomic operation. There is no separate audit step, the audit is built into the signature.
 
 ---
 
@@ -131,9 +131,9 @@ on_proposal_received(proposal):
 
 ## Verification
 
-Because the log digest is included in every signature, consistency verification is not a separate protocol step — it happens on every turn, automatically. There is no need for periodic HMAC-based audits at hand boundaries (as in the pure replicated log model), because every signature already commits to the full log state.
-
-This means that log divergence is detected immediately, on the very next action after it occurs. In the replicated log model, a corrupted write or missed commit could go unnoticed until the next audit. Here, it surfaces the instant anyone tries to act.
+Because part of each signagure includes a hash over the log, consistency verification happens on every turn automatically. This is an improvement over both initial legacy models. There is no longer a need for periodic HMAC-based audits at each hand boundary like the pure replicated log model).  
+  
+This also enables immediate detection of log divergence. Once an action occurs, a step of committing any action is a verification of log consistency, so it will surface any sort of corrupted write or commit as soon as anyone acts/
 
 The verification is also non-repudiable. In the replicated log model, proof of an action was structural — "everyone's log says you did it" — which is strong during live play but weaker after the fact, since logs are unsigned data. Here, every entry carries a signature that anyone can verify independently, at any time, using only the public key and the log. A player cannot disown an action whose signature they produced.
 
@@ -161,7 +161,7 @@ abort_round(round_id):
         fold_player(active_player)
 ```
 
-Because every player holds a full replica of the log, no single disconnection can destroy the game state. If the active player drops, the remaining players still hold identical, up-to-date copies of the committed log. The game continues from the last committed state. The log is never in transit and never exists in only one place — it is always committed everywhere or nowhere.
+Because every player holds a full replica of the log, no single disconnection can destroy the game state, which was a concern with the hot potato design. If the active player drops, the remaining players still hold identical, up-to-date copies of the committed log. The game continues from the last committed state. The log is never in transit and never exists in only one place. It is always committed everywhere or nowhere.
 
 ---
 

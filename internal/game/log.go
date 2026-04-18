@@ -125,7 +125,7 @@ func (l *Log) RollbackLast() {
 // BuildProposal signs (l.Bytes() || action.Bytes()).
 func (l *Log) BuildProposal(playerID uint8, action Action, sk ed25519.PrivateKey) Entry {
 	payload := append(l.Bytes(), action.Bytes()...)
-	sig := cryptolog.Sign(sk, payload) // TODO: Check the signing key is correctly passed
+	sig := cryptolog.Sign(sk, payload)
 	return Entry{
 		RoundID:   l.RoundID(),
 		PlayerID:  playerID,

@@ -23,20 +23,6 @@ Players connect directly to each other and use cryptographic protocols to ensure
 
 Follows Go conventions inspired by Kubernetes and Docker layouts. See [docs/package_structure.md](docs/package_structure.md) for details.
 
-```
-cmd/
-  dispatch/    # Discovery server for peer lookups
-  node/        # Single player's peer process
-  sim/         # Local game simulation
-internal/
-  crypto/      # Cryptographic primitives (deck & log)
-  dispatch/    # Dispatch server logic
-  peer/        # Peer networking and mesh
-  protocol/    # Wire format and frame definitions
-  sim/         # Simulation logic
-  transport/   # Network transport layer
-```
-
 ## Running
 
 ### Simulation
@@ -50,23 +36,30 @@ go run ./cmd/sim
 ### Dispatch + Nodes (P2P Framework)
 
 ```sh
-# Terminal 1 - start the dispatch server
+# Terminal 1 - start the dispatch server at port address 9000
 go run ./cmd/dispatch -addr :9000
 
 # Terminal 2 - create a session and join as the first node
 go run ./cmd/node -dispatch 127.0.0.1:9000 -create -session table-1 -list-peers
+# 127.0.0.1:9000 should be replaced with dispatcher IP if it is not run locally
 
 # Terminal 3 - join the existing session as a second node
 go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -list-peers
+# 127.0.0.1:9000 should be replaced with dispatcher IP if it is not run locally
+```
 
-# Send a message from one node to another
-go run ./cmd/node -dispatch 127.0.0.1:9000 -session table-1 -send-to node-2 -body "hello from node-1"
+
+### Run simulation
+```shell
+make # Builds all binaries
+./dispatch -addr :9000 # Run in one terminal
+./sim -dispatch :9000 -n [number of players] -rounds [number of rounds] # Run in another terminal
 ```
 
 ### Build All
 
 ```sh
-make build   # produces ./app, ./dispatch, ./node binaries
+make # Builds all binaries 
 make clean   # removes built binaries
 ```
 
@@ -78,5 +71,6 @@ See [docs/running.md](docs/running.md) for full flag reference.
 - [Round Consistency](docs/whitepaper/consistency.md)
 
 
-*This project was made as a final project for Computer Science 390.03, Distributed Systems at Duke University, taught by Dr. Jeff Chase in Spring 2026.*  
+*This project was made as a final project for Computer Science 390.03, Distributed Systems at Duke University, taught by Dr. Jeff Chase in Spring 2026.*   
+  
 **Siven Panda, Ahbab Abeer, Chirag Biswas**
