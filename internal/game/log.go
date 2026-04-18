@@ -74,19 +74,33 @@ func (l *Log) Hash() []byte {
 }
 
 // ExpectedNextPlayer deterministic function of the log (seat order from
-// entry 0, folds, dealer button, street). Stub until rules engine exists.
+// entry 0, folds, dealer button, street). Streets are
+// not yet modeled; folds are.
 func (l *Log) ExpectedNextPlayer() uint8 {
 	if l.numPlayers == 0 {
 		return 0
 	}
-	// Simple round-robin stub. Real implementation will consider folds,
-	// streets, dealer button, etc.
-	return uint8(l.RoundID() % uint64(l.numPlayers))
+	// we "replay" the log to figure out who folded. logs are guaranteed consistent bc the nature of proposals
+	state := Replay(l.entries, l.numPlayers, l.startingStack)
+	n := uint64(l.numPlayers)
+	start := l.RoundID() % n
+	for i := range n {
+		cand := uint8((start + i) % n)
+		if !state.Folded[cand] {
+			return cand
+		}
+	}
+	return uint8(start)
 }
 
 // NumPlayers returns the configured player count.
 func (l *Log) NumPlayers() uint8 {
 	return l.numPlayers
+}
+
+// StartingStack returns the starting stack size used to replay state.
+func (l *Log) StartingStack() uint64 {
+	return l.startingStack
 }
 
 // Entries returns a copy of the log entries.

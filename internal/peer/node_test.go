@@ -45,7 +45,12 @@ func connectNode(t *testing.T, ctx context.Context, dispatchAddr string) *peer.N
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	t.Cleanup(func() { node.Close() })
+	t.Cleanup(func() {
+		err := node.Close()
+		if err != nil {
+			return
+		}
+	})
 	return node
 }
 

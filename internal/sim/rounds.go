@@ -154,12 +154,13 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		}
 	}
 
-	// Scripted actions: valid sequence then an illegal raise (exceeds stack).
+	// Scripted actions: drives a fold path, then an illegal raise.
+	// With ≥ 3 seats, round 1's proposer folds and round 2 must skip them.
 	actions := []game.Action{
 		{Kind: game.ActionRaise, Amount: 100}, // round 0: raise to 100
-		{Kind: game.ActionCall},               // round 1: call
-		{Kind: game.ActionRaise, Amount: 500}, // round 2: raise to 500
-		{Kind: game.ActionCall},               // round 3: call
+		{Kind: game.ActionFold},               // round 1: seat 1 folds
+		{Kind: game.ActionCall},               // round 2: seat 2 calls (seat 1 skipped)
+		{Kind: game.ActionCall},               // round 3: seat 0 calls
 		{Kind: game.ActionRaise, Amount: 510}, // round 4: ILLEGAL — exceeds stack
 	}
 
@@ -169,7 +170,12 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 	}
 
 	for r := 0; r < numRounds; r++ {
-		proposerID := order[r%len(order)]
+		// Wait for any runner to reach round r, then ask the log who's up
+		// next (fold-aware). All runners agree once they're at the same round.
+		if err := waitForRound(runCtx, runners[0], uint64(r)); err != nil {
+			return err
+		}
+		proposerID := order[runners[0].Log().ExpectedNextPlayer()]
 
 		localIdx := -1
 		for i, n := range nodes {

@@ -63,7 +63,7 @@ func (r *Runner) Log() *game.Log {
 
 // SubmitAction queues an action for when it is this node's turn.
 func (r *Runner) SubmitAction(action game.Action) error {
-	if r.roleForRound(r.log.RoundID()) != RoleProposer {
+	if r.currentRole() != RoleProposer {
 		return errors.New("not our turn")
 	}
 	select {
@@ -120,7 +120,7 @@ func (r *Runner) Run(ctx context.Context) error {
 func (r *Runner) runRound(ctx context.Context) error {
 	fmt.Printf("[%d] RUN_ROUND # %d\n", r.node.SeatIdx, r.log.RoundID())
 	roundID := r.log.RoundID()
-	role := r.roleForRound(roundID)
+	role := r.currentRole()
 
 	// Phase 1: obtain the proposal based on our role.
 	entry, err := r.obtainProposal(ctx, roundID, role)
@@ -129,7 +129,7 @@ func (r *Runner) runRound(ctx context.Context) error {
 	}
 
 	// Phase 2: verify the proposal against the proposer's registered pk.
-	proposerPK := r.node.PeerPK(r.proposerForRound(roundID))
+	proposerPK := r.node.PeerPK(r.currentProposer())
 	if err := r.log.VerifyProposal(entry, proposerPK); err != nil {
 		return fmt.Errorf("verify: %w", err)
 	}
@@ -156,16 +156,15 @@ func (r *Runner) runRound(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) roleForRound(roundID uint64) Role {
-	proposerIdx := int(roundID) % len(r.node.Order)
-	if proposerIdx == r.node.SeatIdx {
+func (r *Runner) currentRole() Role {
+	if int(r.log.ExpectedNextPlayer()) == r.node.SeatIdx {
 		return RoleProposer
 	}
 	return RoleVerifier
 }
 
-func (r *Runner) proposerForRound(roundID uint64) string {
-	return r.node.Order[int(roundID)%len(r.node.Order)]
+func (r *Runner) currentProposer() string {
+	return r.node.Order[r.log.ExpectedNextPlayer()]
 }
 
 func (r *Runner) obtainProposal(ctx context.Context, roundID uint64, role Role) (game.Entry, error) {
@@ -201,7 +200,7 @@ func (r *Runner) buildAndHostProposal(ctx context.Context, roundID uint64) (game
 
 // pollForProposal polls the proposer node until the proposal file appears.
 func (r *Runner) pollForProposal(ctx context.Context, roundID uint64) (game.Entry, error) {
-	proposerID := r.proposerForRound(roundID)
+	proposerID := r.currentProposer()
 	key := ephemeral.ProposalKey(roundID)
 
 	data, err := r.node.PollRemote(ctx, proposerID, key)
@@ -226,7 +225,8 @@ func (r *Runner) hostVerifyReceipt(roundID uint64) error {
 	return nil
 }
 
-// collectVerifyReceipts polls all other nodes for their receipts concurrently.
+// collectVerifyReceipts polls all other active nodes for their receipts
+// concurrently. Folded seats are skipped and they can be ignored (and thus allowed to disconnect)
 func (r *Runner) collectVerifyReceipts(ctx context.Context, roundID uint64) error {
 	var (
 		mu       sync.Mutex
@@ -234,8 +234,13 @@ func (r *Runner) collectVerifyReceipts(ctx context.Context, roundID uint64) erro
 		wg       sync.WaitGroup
 	)
 
-	for _, nodeID := range r.node.Order {
+	state := game.Replay(r.log.Entries(), r.log.NumPlayers(), r.log.StartingStack())
+
+	for seatIdx, nodeID := range r.node.Order {
 		if nodeID == r.node.ID() {
+			continue
+		}
+		if state.Folded[seatIdx] {
 			continue
 		}
 		wg.Add(1)
