@@ -47,7 +47,12 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 
 	// Attach all nodes to dispatch and init handlers.
 	for i := 0; i < cfg.NumNodes; i++ {
-		n, err := peer.New(peer.Config{PeerAddr: "127.0.0.1:0"})
+		pk, sk, err := cryptolog.GenerateSigner()
+		if err != nil {
+			return fmt.Errorf("node %d keygen: %w", i, err)
+		}
+
+		n, err := peer.New(peer.Config{PeerAddr: "127.0.0.1:0", PublicKey: pk})
 		if err != nil {
 			return fmt.Errorf("node %d new: %w", i, err)
 		}
@@ -56,10 +61,6 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		}
 		n.StartHeartbeat(ctx, 2*time.Second)
 
-		pk, sk, err := cryptolog.GenerateSigner()
-		if err != nil {
-			return fmt.Errorf("node %d keygen: %w", i, err)
-		}
 		pks[i], sks[i], nodes[i] = pk, sk, n
 		fmt.Printf("[sim] node %d attached as %s (peer addr %s)\n", i, n.ID(), n.ListenAddr())
 	}
@@ -155,11 +156,11 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 
 	// Scripted actions: valid sequence then an illegal raise (exceeds stack).
 	actions := []game.Action{
-		{Kind: game.ActionRaise, Amount: 100},  // round 0: raise to 100
-		{Kind: game.ActionCall},                // round 1: call
-		{Kind: game.ActionRaise, Amount: 500},  // round 2: raise to 500
-		{Kind: game.ActionCall},                // round 3: call
-		{Kind: game.ActionRaise, Amount: 9999}, // round 4: ILLEGAL — exceeds stack
+		{Kind: game.ActionRaise, Amount: 100}, // round 0: raise to 100
+		{Kind: game.ActionCall},               // round 1: call
+		{Kind: game.ActionRaise, Amount: 500}, // round 2: raise to 500
+		{Kind: game.ActionCall},               // round 3: call
+		{Kind: game.ActionRaise, Amount: 510}, // round 4: ILLEGAL — exceeds stack
 	}
 
 	numRounds := cfg.NumRounds

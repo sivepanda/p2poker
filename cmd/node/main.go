@@ -25,9 +25,17 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Generate ephemeral keypair for this session.
+	pk, sk, err := cryptolog.GenerateSigner()
+	if err != nil {
+		fmt.Printf("keygen failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	node, err := peer.New(peer.Config{
-		PeerAddr: *peerAddr,
-		NodeID:   *nodeID,
+		PeerAddr:  *peerAddr,
+		NodeID:    *nodeID,
+		PublicKey: pk,
 	})
 	if err != nil {
 		fmt.Printf("node init failed: %v\n", err)
@@ -43,13 +51,6 @@ func main() {
 
 	// Initialize ephemeral file handlers for remote reads.
 	node.InitEphemeralHandlers()
-
-	// Generate ephemeral keypair for this session.
-	pk, sk, err := cryptolog.GenerateSigner()
-	if err != nil {
-		fmt.Printf("keygen failed: %v\n", err)
-		os.Exit(1)
-	}
 
 	var rpcSrv *clientrpc.Server
 	if *rpcAddr != "" {

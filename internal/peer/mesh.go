@@ -2,6 +2,7 @@ package peer
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"net"
@@ -58,16 +59,18 @@ func (n *Node) handleIncomingPeer(conn *transport.GobConn) {
 		_ = conn.Close()
 		return
 	}
-	if frame.Kind != KindPeerHandshake || frame.NodeID == "" {
+	if frame.Kind != KindPeerHandshake || frame.NodeID == "" || len(frame.PublicKey) != ed25519.PublicKeySize {
 		_ = conn.Close()
 		return
 	}
 
 	peerID := frame.NodeID
+	n.SetPeerPK(peerID, ed25519.PublicKey(frame.PublicKey))
 
 	if err := conn.Send(protocol.Frame{
-		Kind:   KindPeerHandshake,
-		NodeID: n.ID(),
+		Kind:      KindPeerHandshake,
+		NodeID:    n.ID(),
+		PublicKey: n.pk,
 	}); err != nil {
 		_ = conn.Close()
 		return
@@ -91,8 +94,9 @@ func (n *Node) dialPeer(ctx context.Context, peerID, addr string) error {
 	conn := transport.NewGobConn(raw)
 
 	if err := conn.Send(protocol.Frame{
-		Kind:   KindPeerHandshake,
-		NodeID: n.ID(),
+		Kind:      KindPeerHandshake,
+		NodeID:    n.ID(),
+		PublicKey: n.pk,
 	}); err != nil {
 		_ = conn.Close()
 		return fmt.Errorf("handshake send: %w", err)
@@ -107,6 +111,11 @@ func (n *Node) dialPeer(ctx context.Context, peerID, addr string) error {
 		_ = conn.Close()
 		return errors.New("unexpected handshake response")
 	}
+	if len(resp.PublicKey) != ed25519.PublicKeySize {
+		_ = conn.Close()
+		return errors.New("handshake missing public key")
+	}
+	n.SetPeerPK(peerID, ed25519.PublicKey(resp.PublicKey))
 
 	n.peersMu.Lock()
 	n.peers[peerID] = conn

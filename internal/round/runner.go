@@ -128,8 +128,9 @@ func (r *Runner) runRound(ctx context.Context) error {
 		return err
 	}
 
-	// Phase 2: verify the proposal (stubbed for now).
-	if err := r.log.VerifyProposal(entry, nil); err != nil {
+	// Phase 2: verify the proposal against the proposer's registered pk.
+	proposerPK := r.node.PeerPK(r.proposerForRound(roundID))
+	if err := r.log.VerifyProposal(entry, proposerPK); err != nil {
 		return fmt.Errorf("verify: %w", err)
 	}
 

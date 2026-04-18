@@ -37,4 +37,5 @@ type Frame struct {
 	PeerAddresses    []string
 	SessionIDs       []string
 	LeaseExpiresUnix int64
+	PublicKey        []byte
 }

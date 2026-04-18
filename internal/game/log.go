@@ -123,16 +123,21 @@ func (l *Log) BuildProposal(playerID uint8, action Action, sk ed25519.PrivateKey
 // VerifyProposal checks, in order:
 //  1. p.RoundID == l.RoundID()
 //  2. p.PlayerID == l.ExpectedNextPlayer()
-//  3. p.Action legal given game state (TODO: rules)
-//  4. sig over (l.Bytes() || p.Action.Bytes()) under pk
-//
-// Signature verification is stubbed to always pass for now.
+//  3. sig over (l.Bytes() || p.Action.Bytes()) under pk
+//  4. p.Action legal given game state
 func (l *Log) VerifyProposal(p Entry, pk ed25519.PublicKey) error {
 	if p.RoundID != l.RoundID() {
 		return errors.New("round id mismatch")
 	}
-	// TODO: check p.PlayerID == l.ExpectedNextPlayer() once rules engine exists
-	// TODO: verify signature: cryptolog.Verify(pk, append(l.Bytes(), p.Action.Bytes()...), p.Signature)
+	if p.PlayerID != l.ExpectedNextPlayer() {
+		return errors.New("player id mismatch")
+	}
+	if len(pk) != ed25519.PublicKeySize {
+		return errors.New("verifier has no public key for proposer")
+	}
+	if !cryptolog.Verify(pk, append(l.Bytes(), p.Action.Bytes()...), p.Signature) {
+		return errors.New("invalid proposal signature")
+	}
 
 	state := Replay(l.entries, l.numPlayers, l.startingStack)
 	if err := state.ValidateAction(p.PlayerID, p.Action); err != nil {
@@ -141,7 +146,7 @@ func (l *Log) VerifyProposal(p Entry, pk ed25519.PublicKey) error {
 	return nil
 }
 
-// VerifyReceipt is the ephemeral "I appended" file. Published AFTER Append.
+// VerifyReceipt is the ephemeral "I appended" file
 type VerifyReceipt struct {
 	RoundID     uint64
 	PlayerID    uint8
@@ -171,7 +176,6 @@ func (l *Log) BuildVerifyReceipt(playerID uint8, sk ed25519.PrivateKey) VerifyRe
 }
 
 // VerifyVerifyReceipt checks RoundID, PostLogHash matches our log, and sig.
-// Stubbed to always pass for now.
 func (l *Log) VerifyVerifyReceipt(r VerifyReceipt, pk ed25519.PublicKey) error {
 	// 1. Basic Round Check
 	if r.RoundID != l.RoundID()-1 {

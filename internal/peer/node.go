@@ -2,6 +2,7 @@ package peer
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"math/big"
@@ -34,6 +35,7 @@ type Config struct {
 	DispatchAddr string
 	PeerAddr     string
 	NodeID       string
+	PublicKey    ed25519.PublicKey
 }
 
 type Node struct {
@@ -64,6 +66,11 @@ type Node struct {
 	peerPendingMu sync.Mutex
 	peerPending   map[string]chan EphemeralReadResponse
 
+	pk ed25519.PublicKey
+
+	peerPKsMu sync.RWMutex
+	peerPKs   map[string]ed25519.PublicKey
+
 	onGameStart func(sessionID string, order []string)
 
 	// modKey is this node's SRA key for commutative card encryption/decryption.
@@ -90,6 +97,9 @@ func New(cfg Config) (*Node, error) {
 	if cfg.PeerAddr == "" {
 		return nil, errors.New("peer listen address must be set")
 	}
+	if len(cfg.PublicKey) != ed25519.PublicKeySize {
+		return nil, errors.New("public key must be set")
+	}
 
 	ln, err := net.Listen("tcp", cfg.PeerAddr)
 	if err != nil {
@@ -111,6 +121,8 @@ func New(cfg Config) (*Node, error) {
 		handlers:    make(map[string]Handler),
 		store:       ephemeral.New(),
 		peerPending: make(map[string]chan EphemeralReadResponse),
+		pk:          cfg.PublicKey,
+		peerPKs:     make(map[string]ed25519.PublicKey),
 		modKey:      modKey,
 		prime:       PRIME,
 	}
@@ -190,6 +202,8 @@ func (n *Node) AttachDispatch(ctx context.Context, dispatchAddr string) error {
 	n.dispatchConn = conn
 	n.dispatchMu.Unlock()
 
+	n.SetPeerPK(resp.NodeID, n.pk)
+
 	go n.dispatchReadLoop(conn)
 
 	return nil
@@ -244,6 +258,20 @@ func (n *Node) ID() string {
 // Money returns the node's starting chip count.
 func (n *Node) Money() int {
 	return n.money
+}
+
+// SetPeerPK registers a peer's signing public key.
+func (n *Node) SetPeerPK(id string, pk ed25519.PublicKey) {
+	n.peerPKsMu.Lock()
+	defer n.peerPKsMu.Unlock()
+	n.peerPKs[id] = pk
+}
+
+// PeerPK returns the registered public key for id, or nil if unknown.
+func (n *Node) PeerPK(id string) ed25519.PublicKey {
+	n.peerPKsMu.RLock()
+	defer n.peerPKsMu.RUnlock()
+	return n.peerPKs[id]
 }
 
 // ListenAddr exposes the node's peer address.

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
 	"github.com/sivepanda/p2poker/internal/dispatch"
 	"github.com/sivepanda/p2poker/internal/peer"
 )
@@ -31,9 +32,15 @@ func startDispatch(t *testing.T, ctx context.Context) string {
 func connectNode(t *testing.T, ctx context.Context, dispatchAddr string) *peer.Node {
 	t.Helper()
 
+	pk, _, err := cryptolog.GenerateSigner()
+	if err != nil {
+		t.Fatalf("keygen: %v", err)
+	}
+
 	node, err := peer.Connect(ctx, peer.Config{
 		DispatchAddr: dispatchAddr,
 		PeerAddr:     "127.0.0.1:0",
+		PublicKey:    pk,
 	})
 	if err != nil {
 		t.Fatalf("connect: %v", err)
