@@ -16,8 +16,10 @@ import (
 )
 
 type Config struct {
-	Address  string
-	LeaseTTL time.Duration
+	Address         string
+	LeaseTTL        time.Duration
+	TimeoutInterval time.Duration // per-attempt deadline, broadcast in GameStart
+	MaxAttempts     uint32        // K failures before auto-fold, broadcast in GameStart
 }
 
 type Server struct {
@@ -32,8 +34,10 @@ type Server struct {
 }
 
 type session struct {
-	id      string
-	members map[string]struct{}
+	id              string
+	members         map[string]struct{}
+	timeoutInterval time.Duration // snapshotted from Server at create time
+	maxAttempts     uint32
 }
 
 type nodeConn struct {
@@ -229,7 +233,12 @@ func (s *Server) handleCreateSession(nc *nodeConn, frame protocol.Frame) {
 		s.removeNodeFromSessionLocked(nc.id, nc.sessionID)
 	}
 
-	sess := &session{id: sessionID, members: map[string]struct{}{nc.id: {}}}
+	sess := &session{
+		id:              sessionID,
+		members:         map[string]struct{}{nc.id: {}},
+		timeoutInterval: s.cfg.TimeoutInterval,
+		maxAttempts:     s.cfg.MaxAttempts,
+	}
 	s.sessions[sessionID] = sess
 	nc.sessionID = sessionID
 	s.mu.Unlock()
@@ -337,6 +346,8 @@ func (s *Server) handleGameStart(nc *nodeConn, frame protocol.Frame) {
 	for id := range sess.members {
 		memberIDs = append(memberIDs, id)
 	}
+	timeoutMS := uint64(sess.timeoutInterval / time.Millisecond)
+	maxAttempts := sess.maxAttempts
 	s.mu.RUnlock()
 
 	sort.Strings(memberIDs)
@@ -348,10 +359,12 @@ func (s *Server) handleGameStart(nc *nodeConn, frame protocol.Frame) {
 			continue
 		}
 		_ = node.conn.Send(protocol.Frame{
-			Kind:      protocol.KindGameStart,
-			SessionID: nc.sessionID,
-			PeerIDs:   memberIDs,
-			Success:   true,
+			Kind:              protocol.KindGameStart,
+			SessionID:         nc.sessionID,
+			PeerIDs:           memberIDs,
+			Success:           true,
+			TimeoutIntervalMS: timeoutMS,
+			MaxAttempts:       maxAttempts,
 		})
 	}
 	s.mu.RUnlock()

@@ -20,7 +20,7 @@ service PokerNode {
   rpc AttachDispatch(AttachDispatchRequest) returns (AttachDispatchResponse);
   rpc DetachDispatch(DetachDispatchRequest) returns (DetachDispatchResponse);
 
-  // Events — server-side stream, frontend subscribes once
+  // Events: server-side stream, frontend subscribes once
   rpc SubscribeEvents(SubscribeEventsRequest) returns (stream Event);
 }
 
@@ -110,11 +110,94 @@ message SubscribeEventsRequest {}
 message Event {
   oneof event {
     PeerMessageEvent peer_message = 1;
+    LogEvent log = 2;
+    GameStartEvent game_start = 3;
+    HoleCardsEvent hole_cards = 4;
+    CommunityCardsEvent community_cards = 5;
+    RoundStartedEvent round_started = 6;
+    ActionEvent action = 7;
+    AutoFoldEvent auto_fold = 8;
   }
+}
+
+// GameStartEvent fires once per game when dispatch has broadcast the seating
+// order. A frontend can use order+my_seat to render the table layout.
+message GameStartEvent {
+  string session_id = 1;
+  repeated string order = 2;
+  int32 my_seat = 3;
+  string node_id = 4;
+}
+
+// HoleCardsEvent carries this node's two hole cards in their full plaintext
+// (e.g. "5", "33"). The frontend maps the integer codes to suit+rank.
+message HoleCardsEvent {
+  string node_id = 1;
+  string card1 = 2;
+  string card2 = 3;
+}
+
+// CommunityCardsEvent carries the full, cumulative list of revealed
+// community cards. Fired once per new card (so the frontend sees flop,
+// turn, river in order).
+message CommunityCardsEvent {
+  string node_id = 1;
+  repeated string cards = 2;
+}
+
+// RoundStartedEvent marks the start of round_id with proposer at the given
+// seat. Frontends drive "whose turn is it" off this event.
+message RoundStartedEvent {
+  string node_id = 1;
+  uint64 round_id = 2;
+  uint32 proposer_seat = 3;
+  int32 my_seat = 4;
+}
+
+// ActionEvent reports the outcome of a single propose/verify attempt:
+// the seat that acted, what action they chose, and whether it was
+// committed, rejected, or timed out.
+message ActionEvent {
+  string node_id = 1;
+  uint64 round_id = 2;
+  uint32 attempt = 3;
+  int32 seat = 4;
+  ActionKind kind = 5;
+  uint64 amount = 6;
+  string outcome = 7; // "committed" | "rejected" | "timeout"
+  string reason = 8;
+}
+
+// AutoFoldEvent fires when a proposer is auto-folded after exhausting
+// their attempt budget.
+message AutoFoldEvent {
+  string node_id = 1;
+  uint64 round_id = 2;
+  uint32 target_seat = 3;
 }
 
 message PeerMessageEvent {
   string from = 1;
   string message_type = 2;
   bytes payload = 3;
+}
+
+// LogEvent mirrors every CLI-visible signal the node emits (shuffle/deal
+// progress, round lifecycle, auto-fold, sim harness chatter, etc.) so a
+// frontend can observe play without reading stdout.
+//
+// kind categorizes the event: "log", "game_start", "shuffle", "deal",
+// "community", "round", "attempt", "auto_fold", "sim". component is a
+// free-form tag (e.g. "runner", "shuffle") to aid filtering. fields carries
+// structured extras; cards carries any card values the event wants to
+// surface (e.g. {"hole1": "5H", "hole2": "AS"}).
+message LogEvent {
+  int64 timestamp_ns = 1;
+  string node_id = 2;
+  string session_id = 3;
+  string kind = 4;
+  string component = 5;
+  string message = 6;
+  map<string, string> fields = 7;
+  map<string, string> cards = 8;
 }

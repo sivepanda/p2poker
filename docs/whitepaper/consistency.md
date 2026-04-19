@@ -135,7 +135,7 @@ Because part of each signagure includes a hash over the log, consistency verific
   
 This also enables immediate detection of log divergence. Once an action occurs, a step of committing any action is a verification of log consistency, so it will surface any sort of corrupted write or commit as soon as anyone acts/
 
-The verification is also non-repudiable. In the replicated log model, proof of an action was structural — "everyone's log says you did it" — which is strong during live play but weaker after the fact, since logs are unsigned data. Here, every entry carries a signature that anyone can verify independently, at any time, using only the public key and the log. A player cannot disown an action whose signature they produced.
+The verification is also non-repudiable. In the replicated log model, proof of an action was structural ("everyone's log says you did it") which is strong during live play but weaker after the fact, since logs are unsigned data. Here, every entry carries a signature that anyone can verify independently, at any time, using only the public key and the log. A player cannot disown an action whose signature they produced.
 
 ---
 
@@ -160,6 +160,35 @@ abort_round(round_id):
     if consecutive_failures[active_player] >= K:
         fold_player(active_player)
 ```
+
+### Auto-fold attestations
+
+`fold_player(active_player)` cannot be a single-signer entry, as the target, by definition, is the one failing to act, and Problem 3 forbids any other player from forging a fold under the target's key. Instead, once a node has locally observed K consecutive aborted attempts from the same seat, every non-folded seat **other than** the target acts as an attestor. Attestations are conditional: no attestation file is produced during normal play, during individual aborted attempts, or for rounds that commit successfully. They are only hosted once the K-failure threshold is crossed on that replica.
+
+Each attestor signs:
+
+```
+attestation_payload = serialize(local_log) || "auto_fold" || round_id || target_seat
+attestation_sig     = sign(hash(attestation_payload), attestor_private_key)
+```
+
+and hosts the signature as an ephemeral file keyed by `(round_id, attestor_id)`. Every replica — including the target — polls the expected attestor set (derived deterministically from replayed state as "non-folded seats minus target") and assembles the same entry:
+
+```
+Entry {
+    round_id:      u64,
+    player_id:     u8,          // target seat
+    action:        Fold,
+    amount:        0,
+    signature:     [],          // empty: distinguishes auto-fold from self-signed fold
+    co_signers:    [u8],        // sorted attestor seats
+    co_signatures: [[u8]]       // same length/order as co_signers
+}
+```
+
+Verification accepts the entry only if every expected attestor's co-signature verifies against its public key under the fixed payload. The entry's serialization includes the co-signer section when `signature` is empty, so the hash chain that binds future proposals still commits to the full attestor set.
+
+This preserves the Problem 3 guarantee for the minority-attacker case: a lone attacker cannot forge an auto-fold because they cannot produce the N−2 other attestors' signatures. It does not strengthen the protocol against majority collusion, but that is an inherent problem with Poker as a game, as discussed in Problem 6. If a single expected attestor never publishes (because of clock skew, byzantine refusal, or its own disconnection) the auto-fold consensus does not complete and the round hangs on that replica, the same liveness failure the whitepaper already accepts for majority-collusion scenarios.
 
 Because every player holds a full replica of the log, no single disconnection can destroy the game state, which was a concern with the hot potato design. If the active player drops, the remaining players still hold identical, up-to-date copies of the committed log. The game continues from the last committed state. The log is never in transit and never exists in only one place. It is always committed everywhere or nowhere.
 

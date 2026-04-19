@@ -67,7 +67,7 @@ func (n *Node) RequestCards() error {
 		nextIdx := (n.SeatIdx + 1) % len(n.Order)
 		nextID := n.Order[nextIdx]
 
-		fmt.Printf("[%s] Starting ring relay for card %d -> sending to %s\n", n.id, cardIdx, nextID)
+		n.EmitKind("deal", "deal", "[%s] Starting ring relay for card %d -> sending to %s", n.id, cardIdx, nextID)
 
 		// Sending the raw ciphertext; your handler will strip your layer
 		// when this message eventually loops back to you.
@@ -97,13 +97,14 @@ func (n *Node) HoleCards() (string, string) {
 
 func (n *Node) PrintCards() {
 	if n.NoCardsYet() {
-		fmt.Printf("[%s] Hole Cards: [Waiting for deal...]\n", n.id)
+		n.EmitKind("deal", "deal", "[%s] Hole Cards: [Waiting for deal...]", n.id)
 		return
 	}
 
-	fmt.Println("--------------------------")
-	fmt.Printf("[%s] YOUR HAND\n", n.id)
-	fmt.Printf("Card 1: %s\n", n.card1)
-	fmt.Printf("Card 2: %s\n", n.card2)
-	fmt.Println("--------------------------")
+	msg := fmt.Sprintf("--------------------------\n[%s] YOUR HAND\nCard 1: %s\nCard 2: %s\n--------------------------",
+		n.id, n.card1, n.card2)
+	n.EmitCards("deal", "deal", msg, map[string]string{
+		"hole1": n.card1,
+		"hole2": n.card2,
+	})
 }

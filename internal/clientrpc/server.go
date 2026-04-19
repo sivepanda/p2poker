@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -168,12 +170,16 @@ func (s *Server) DetachDispatch(ctx context.Context, req *clientrpcpb.DetachDisp
 	return &clientrpcpb.DetachDispatchResponse{}, nil
 }
 
-// SubscribeEvents streams incoming peer messages to the client.
+// SubscribeEvents streams node-emitted events (shuffle/deal/round/auto-fold
+// progress, sim harness chatter, etc.) plus any incoming "chat" peer
+// messages to the client. The frontend sees exactly the signals that used
+// to be dumped to stdout.
 func (s *Server) SubscribeEvents(req *clientrpcpb.SubscribeEventsRequest, stream grpc.ServerStreamingServer[clientrpcpb.Event]) error {
-	ch := make(chan *clientrpcpb.Event, 64)
+	ch := make(chan *clientrpcpb.Event, 128)
 
 	s.node.Handle("chat", func(msg peer.Message) {
-		ch <- &clientrpcpb.Event{
+		select {
+		case ch <- &clientrpcpb.Event{
 			Event: &clientrpcpb.Event_PeerMessage{
 				PeerMessage: &clientrpcpb.PeerMessageEvent{
 					From:        msg.From,
@@ -181,18 +187,172 @@ func (s *Server) SubscribeEvents(req *clientrpcpb.SubscribeEventsRequest, stream
 					Payload:     msg.Payload,
 				},
 			},
+		}:
+		default:
 		}
 	})
+
+	busCh, unsubscribe := s.node.Subscribe()
+	defer unsubscribe()
 
 	for {
 		select {
 		case <-stream.Context().Done():
 			return nil
+		case ev, ok := <-busCh:
+			if !ok {
+				return nil
+			}
+			if err := stream.Send(translateBusEvent(ev)); err != nil {
+				return err
+			}
 		case ev := <-ch:
 			if err := stream.Send(ev); err != nil {
 				return err
 			}
 		}
+	}
+}
+
+// translateBusEvent maps a neutral peer.Event to the most specific proto
+// Event variant possible. For recognized game-state kinds the frontend gets
+// a typed message with parsed fields; anything else falls through to a
+// generic LogEvent carrying message + fields + cards maps.
+func translateBusEvent(ev peer.Event) *clientrpcpb.Event {
+	switch ev.Kind {
+	case "game_start":
+		return &clientrpcpb.Event{Event: &clientrpcpb.Event_GameStart{
+			GameStart: &clientrpcpb.GameStartEvent{
+				NodeId:    ev.NodeID,
+				SessionId: firstNonEmpty(ev.SessionID, ev.Fields["session_id"]),
+				Order:     splitCSV(ev.Fields["order"]),
+				MySeat:    atoi32(ev.Fields["my_seat"]),
+			},
+		}}
+	case "deal":
+		if len(ev.Cards) > 0 && (ev.Cards["hole1"] != "" || ev.Cards["hole2"] != "") {
+			return &clientrpcpb.Event{Event: &clientrpcpb.Event_HoleCards{
+				HoleCards: &clientrpcpb.HoleCardsEvent{
+					NodeId: ev.NodeID,
+					Card1:  ev.Cards["hole1"],
+					Card2:  ev.Cards["hole2"],
+				},
+			}}
+		}
+	case "community":
+		if len(ev.Cards) > 0 {
+			return &clientrpcpb.Event{Event: &clientrpcpb.Event_CommunityCards{
+				CommunityCards: &clientrpcpb.CommunityCardsEvent{
+					NodeId: ev.NodeID,
+					Cards:  orderedCardList(ev.Cards),
+				},
+			}}
+		}
+	case "round":
+		return &clientrpcpb.Event{Event: &clientrpcpb.Event_RoundStarted{
+			RoundStarted: &clientrpcpb.RoundStartedEvent{
+				NodeId:       ev.NodeID,
+				RoundId:      atou64(ev.Fields["round_id"]),
+				ProposerSeat: atou32(ev.Fields["proposer_seat"]),
+				MySeat:       atoi32(ev.Fields["my_seat"]),
+			},
+		}}
+	case "attempt":
+		return &clientrpcpb.Event{Event: &clientrpcpb.Event_Action{
+			Action: &clientrpcpb.ActionEvent{
+				NodeId:  ev.NodeID,
+				RoundId: atou64(ev.Fields["round_id"]),
+				Attempt: atou32(ev.Fields["attempt"]),
+				Seat:    atoi32(ev.Fields["seat"]),
+				Kind:    actionKindFromName(ev.Fields["action_kind"]),
+				Amount:  atou64(ev.Fields["action_amount"]),
+				Outcome: ev.Fields["outcome"],
+				Reason:  ev.Fields["reason"],
+			},
+		}}
+	case "auto_fold":
+		if ev.Fields["target_seat"] != "" {
+			return &clientrpcpb.Event{Event: &clientrpcpb.Event_AutoFold{
+				AutoFold: &clientrpcpb.AutoFoldEvent{
+					NodeId:     ev.NodeID,
+					RoundId:    atou64(ev.Fields["round_id"]),
+					TargetSeat: atou32(ev.Fields["target_seat"]),
+				},
+			}}
+		}
+	}
+	// Fallback: generic log (free-form shuffle chatter, auto-fold progress,
+	// sim harness messages).
+	return &clientrpcpb.Event{Event: &clientrpcpb.Event_Log{
+		Log: &clientrpcpb.LogEvent{
+			TimestampNs: ev.Timestamp.UnixNano(),
+			NodeId:      ev.NodeID,
+			SessionId:   ev.SessionID,
+			Kind:        ev.Kind,
+			Component:   ev.Component,
+			Message:     ev.Message,
+			Fields:      ev.Fields,
+			Cards:       ev.Cards,
+		},
+	}}
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
+func splitCSV(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
+}
+
+func atou64(s string) uint64 {
+	v, _ := strconv.ParseUint(s, 10, 64)
+	return v
+}
+
+func atou32(s string) uint32 {
+	v, _ := strconv.ParseUint(s, 10, 32)
+	return uint32(v)
+}
+
+func atoi32(s string) int32 {
+	v, _ := strconv.ParseInt(s, 10, 32)
+	return int32(v)
+}
+
+// orderedCardList returns cards["card1"], cards["card2"], ... in order,
+// stopping at the first gap so partial reveals (e.g. flop only) still
+// render contiguously.
+func orderedCardList(cards map[string]string) []string {
+	out := make([]string, 0, len(cards))
+	for i := 1; ; i++ {
+		v, ok := cards["card"+strconv.Itoa(i)]
+		if !ok {
+			break
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+func actionKindFromName(name string) clientrpcpb.ActionKind {
+	switch name {
+	case "fold":
+		return clientrpcpb.ActionKind_ACTION_KIND_FOLD
+	case "check":
+		return clientrpcpb.ActionKind_ACTION_KIND_CHECK
+	case "call":
+		return clientrpcpb.ActionKind_ACTION_KIND_CALL
+	case "raise":
+		return clientrpcpb.ActionKind_ACTION_KIND_RAISE
+	default:
+		return clientrpcpb.ActionKind_ACTION_KIND_FOLD
 	}
 }
 

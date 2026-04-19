@@ -5,10 +5,13 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"net"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/sivepanda/p2poker/internal/clientrpc"
 	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
 	"github.com/sivepanda/p2poker/internal/game"
 	"github.com/sivepanda/p2poker/internal/peer"
@@ -21,6 +24,12 @@ type RoundsConfig struct {
 	NumNodes     int
 	SessionID    string
 	NumRounds    int
+
+	// RPCBaseAddr, if non-empty (e.g. "127.0.0.1:50051"), starts a clientrpc
+	// gRPC server per simulated node. Node i listens at host:(port+i), so
+	// frontends can subscribe to each node's event stream. Leave empty to
+	// run sim headless.
+	RPCBaseAddr string
 }
 
 // RunRounds attaches NumNodes peer nodes to an already-running dispatch at
@@ -44,6 +53,25 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 	nodes := make([]*peer.Node, cfg.NumNodes)
 	pks := make([]ed25519.PublicKey, cfg.NumNodes)
 	sks := make([]ed25519.PrivateKey, cfg.NumNodes)
+	rpcServers := make([]*clientrpc.Server, cfg.NumNodes)
+
+	// simLog prints and fans out to every node's event bus so any subscribed
+	// frontend sees the same harness messages that used to land on stdout.
+	simLog := func(format string, args ...any) {
+		msg := fmt.Sprintf(format, args...)
+		fmt.Println(msg)
+		for _, n := range nodes {
+			if n == nil {
+				continue
+			}
+			n.Emit(peer.Event{Kind: "sim", Component: "sim", Message: msg})
+		}
+	}
+
+	rpcHost, rpcBasePort, err := parseRPCBase(cfg.RPCBaseAddr)
+	if err != nil {
+		return err
+	}
 
 	// Attach all nodes to dispatch and init handlers.
 	for i := 0; i < cfg.NumNodes; i++ {
@@ -62,7 +90,20 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		n.StartHeartbeat(ctx, 2*time.Second)
 
 		pks[i], sks[i], nodes[i] = pk, sk, n
-		fmt.Printf("[sim] node %d attached as %s (peer addr %s)\n", i, n.ID(), n.ListenAddr())
+
+		if cfg.RPCBaseAddr != "" {
+			rpcSrv := clientrpc.NewServer(n)
+			rpcServers[i] = rpcSrv
+			addr := fmt.Sprintf("%s:%d", rpcHost, rpcBasePort+i)
+			go func(a string, s *clientrpc.Server) {
+				if err := clientrpc.Serve(ctx, a, s); err != nil {
+					fmt.Printf("[sim] rpc server %s exited: %v\n", a, err)
+				}
+			}(addr, rpcSrv)
+			simLog("[sim] node %d gRPC listening on %s", i, addr)
+		}
+
+		simLog("[sim] node %d attached as %s (peer addr %s)", i, n.ID(), n.ListenAddr())
 	}
 	defer func() {
 		for _, n := range nodes {
@@ -75,7 +116,7 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 	if err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
-	fmt.Printf("[sim] session %s created by %s\n", sessID, nodes[0].ID())
+	simLog("[sim] session %s created by %s", sessID, nodes[0].ID())
 
 	for i := 1; i < cfg.NumNodes; i++ {
 		if err := nodes[i].JoinSession(ctx, sessID); err != nil {
@@ -96,12 +137,12 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		order[i] = n.ID()
 	}
 	sort.Strings(order)
-	fmt.Printf("[sim] %d nodes joined, waiting for dispatch game_start...\n", cfg.NumNodes)
+	simLog("[sim] %d nodes joined, waiting for dispatch game_start...", cfg.NumNodes)
 	startGameErr := nodes[0].StartGame(ctx)
 	if startGameErr != nil {
 		return startGameErr
 	}
-	fmt.Printf("[sim] game_start received, order: %v\n", order)
+	simLog("[sim] game_start received, order: %v", order)
 	// Wait until every node has processed game_start and populated Order.
 	for {
 		allStarted := true
@@ -136,11 +177,19 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		runnerWG.Add(1)
 		go func() {
 			defer runnerWG.Done()
-			r := round.New(n, n.Store(), sks[idx], pks[idx])
+			sc := n.SessionConfig()
+			r := round.New(n, n.Store(), sks[idx], pks[idx], round.Config{
+				TimeoutInterval: sc.TimeoutInterval,
+				MaxAttempts:     sc.MaxAttempts,
+			})
 			runners[idx] = r
+			if rpcServers[idx] != nil {
+				rpcServers[idx].SetRunner(r)
+				defer rpcServers[idx].SetRunner(nil)
+			}
 			close(runnerReady[idx])
 			if err := r.Run(runCtx); err != nil && !errors.Is(err, context.Canceled) {
-				fmt.Printf("[sim] runner %s exited: %v\n", n.ID(), err)
+				simLog("[sim] runner %s exited: %v", n.ID(), err)
 			}
 		}()
 	}
@@ -154,29 +203,42 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		}
 	}
 
-	// Scripted actions: drives a fold path, then an illegal raise.
-	// With ≥ 3 seats, round 1's proposer folds and round 2 must skip them.
-	actions := []game.Action{
-		{Kind: game.ActionRaise, Amount: 100}, // round 0: raise to 100
-		{Kind: game.ActionFold},               // round 1: seat 1 folds
-		{Kind: game.ActionCall},               // round 2: seat 2 calls (seat 1 skipped)
-		{Kind: game.ActionCall},               // round 3: seat 0 calls
-		{Kind: game.ActionRaise, Amount: 510}, // round 4: ILLEGAL — exceeds stack
+	// Per-round attempt scripts. Each script's Attempts are consumed in order,
+	// one per proposer attempt. Illegal attempts drive the retry / auto-fold
+	// flow:  verify end-to-end that the runner reacts correctly.
+	scripts := []roundScript{
+		{Attempts: []game.Action{{Kind: game.ActionRaise, Amount: 100}}},
+		{Attempts: []game.Action{{Kind: game.ActionFold}}},
+		{Attempts: []game.Action{{Kind: game.ActionCall}}},
+		{Attempts: []game.Action{{Kind: game.ActionCall}}},
+		{Attempts: []game.Action{
+			{Kind: game.ActionRaise, Amount: 1_000_000}, // illegal
+			{Kind: game.ActionCall},                     // legal retry
+		}},
+		{Attempts: []game.Action{
+			{Kind: game.ActionRaise, Amount: 1_000_000},
+			{Kind: game.ActionRaise, Amount: 1_000_000},
+			{Kind: game.ActionRaise, Amount: 1_000_000},
+		}, ExpectAutoFold: true},
 	}
 
 	numRounds := cfg.NumRounds
-	if numRounds > len(actions) {
-		numRounds = len(actions)
+	if numRounds > len(scripts) {
+		numRounds = len(scripts)
 	}
 
 	for r := 0; r < numRounds; r++ {
-		// Wait for any runner to reach round r, then ask the log who's up
-		// next (fold-aware). All runners agree once they're at the same round.
-		if err := waitForRound(runCtx, runners[0], uint64(r)); err != nil {
-			return err
+		// Every runner must have reached round r before we can identify the
+		// proposer. ExpectedNextPlayer is fold-aware, so it only stabilizes
+		// once prior rounds have committed (or auto-folded) everywhere.
+		for _, rn := range runners {
+			if err := waitForRound(runCtx, rn, uint64(r)); err != nil {
+				return err
+			}
 		}
-		proposerID := order[runners[0].Log().ExpectedNextPlayer()]
 
+		proposerSeat := runners[0].Log().ExpectedNextPlayer()
+		proposerID := order[proposerSeat]
 		localIdx := -1
 		for i, n := range nodes {
 			if n.ID() == proposerID {
@@ -188,33 +250,131 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 			return fmt.Errorf("round %d proposer %s not local", r, proposerID)
 		}
 
-		if err := waitForRound(runCtx, runners[localIdx], uint64(r)); err != nil {
+		outcome, err := driveScriptedRound(runCtx, runners[localIdx], nodes, r, proposerID, scripts[r].Attempts)
+		if err != nil {
 			return err
 		}
-
-		action := actions[r]
-		if err := runners[localIdx].SubmitAction(action); err != nil {
-			return fmt.Errorf("round %d submit: %w", r, err)
+		if scripts[r].ExpectAutoFold && outcome != "auto_fold" {
+			return fmt.Errorf("round %d expected auto_fold, got %s", r, outcome)
 		}
-		fmt.Printf("[sim] round %d: proposer %s queued %v\n", r, proposerID, action)
+		if !scripts[r].ExpectAutoFold && outcome != "committed" {
+			return fmt.Errorf("round %d expected committed, got %s", r, outcome)
+		}
 
 		for _, rn := range runners {
 			if err := waitForRound(runCtx, rn, uint64(r+1)); err != nil {
 				return err
 			}
 		}
+
+		if scripts[r].ExpectAutoFold {
+			// Every replica must agree the proposer is now folded.
+			for i, rn := range runners {
+				state := game.Replay(rn.Log().Entries(), rn.Log().NumPlayers(), rn.Log().StartingStack())
+				if !state.Folded[proposerSeat] {
+					return fmt.Errorf("round %d auto-fold: node %s seat %d not folded", r, nodes[i].ID(), proposerSeat)
+				}
+			}
+			simLog("[sim] round %d auto-fold confirmed across %d nodes", r, len(runners))
+		}
 	}
 
-	fmt.Printf("[sim] %d rounds committed on all nodes\n", cfg.NumRounds)
+	simLog("[sim] %d rounds simulated on all nodes", numRounds)
 
 	cancelRun()
 	runnerWG.Wait()
 
 	for i, rn := range runners {
-		fmt.Printf("[sim] node %s final log length: %d\n", nodes[i].ID(), rn.Log().RoundID())
+		simLog("[sim] node %s final log length: %d", nodes[i].ID(), rn.Log().RoundID())
 	}
 
 	return nil
+}
+
+// parseRPCBase splits "host:port" into host and base port. Empty addr
+// disables RPC and returns zero values.
+func parseRPCBase(addr string) (string, int, error) {
+	if addr == "" {
+		return "", 0, nil
+	}
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", 0, fmt.Errorf("rpc base addr %q: %w", addr, err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", 0, fmt.Errorf("rpc base port %q: %w", portStr, err)
+	}
+	return host, port, nil
+}
+
+// roundScript packages a per-round sequence of proposer attempts.
+type roundScript struct {
+	Attempts       []game.Action
+	ExpectAutoFold bool
+}
+
+// driveScriptedRound submits scripted actions to the proposer one attempt at a
+// time, advancing on each rejected/timeout event. Returns the terminal outcome.
+func driveScriptedRound(
+	ctx context.Context,
+	r *round.Runner,
+	nodes []*peer.Node,
+	roundID int,
+	proposerID string,
+	attempts []game.Action,
+) (string, error) {
+	simLog := func(format string, args ...any) {
+		msg := fmt.Sprintf(format, args...)
+		fmt.Println(msg)
+		for _, n := range nodes {
+			n.Emit(peer.Event{Kind: "sim", Component: "sim", Message: msg})
+		}
+	}
+
+	submitted := 0
+	for {
+		if submitted < len(attempts) {
+			if err := r.SubmitAction(attempts[submitted]); err != nil {
+				return "", fmt.Errorf("round %d attempt %d submit: %w", roundID, submitted, err)
+			}
+			simLog("[sim] round %d attempt %d: proposer %s queued %v",
+				roundID, submitted, proposerID, attempts[submitted])
+			submitted++
+		}
+
+		ev, err := nextRoundEvent(ctx, r, uint64(roundID))
+		if err != nil {
+			return "", err
+		}
+		switch ev.Outcome {
+		case "committed":
+			simLog("[sim] round %d committed (attempt %d)", roundID, ev.Attempt)
+			return "committed", nil
+		case "auto_fold":
+			simLog("[sim] round %d AUTO-FOLD", roundID)
+			return "auto_fold", nil
+		case "rejected", "timeout":
+			simLog("[sim] round %d attempt %d %s: %s",
+				roundID, ev.Attempt, ev.Outcome, ev.Reason)
+		}
+	}
+}
+
+// nextRoundEvent drains events until one matches target. Stale events (from
+// prior rounds this runner observed as verifier) are skipped; re-entering
+// the submit loop on them would double-submit and hit "action already pending".
+func nextRoundEvent(ctx context.Context, r *round.Runner, target uint64) (round.AttemptEvent, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return round.AttemptEvent{}, ctx.Err()
+		case ev := <-r.Events():
+			if ev.RoundID == target {
+				return ev, nil
+			}
+		}
+	}
 }
 
 // waitForRound blocks until r.Log().RoundID() >= target or ctx is done.

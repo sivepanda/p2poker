@@ -51,7 +51,7 @@ type PokerNodeClient interface {
 	GetNodeInfo(ctx context.Context, in *GetNodeInfoRequest, opts ...grpc.CallOption) (*GetNodeInfoResponse, error)
 	AttachDispatch(ctx context.Context, in *AttachDispatchRequest, opts ...grpc.CallOption) (*AttachDispatchResponse, error)
 	DetachDispatch(ctx context.Context, in *DetachDispatchRequest, opts ...grpc.CallOption) (*DetachDispatchResponse, error)
-	// Events — server-side stream, frontend subscribes once
+	// Events: server-side stream, frontend subscribes once
 	SubscribeEvents(ctx context.Context, in *SubscribeEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Event], error)
 }
 
@@ -210,7 +210,7 @@ type PokerNodeServer interface {
 	GetNodeInfo(context.Context, *GetNodeInfoRequest) (*GetNodeInfoResponse, error)
 	AttachDispatch(context.Context, *AttachDispatchRequest) (*AttachDispatchResponse, error)
 	DetachDispatch(context.Context, *DetachDispatchRequest) (*DetachDispatchResponse, error)
-	// Events — server-side stream, frontend subscribes once
+	// Events: server-side stream, frontend subscribes once
 	SubscribeEvents(*SubscribeEventsRequest, grpc.ServerStreamingServer[Event]) error
 	mustEmbedUnimplementedPokerNodeServer()
 }

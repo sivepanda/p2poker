@@ -30,7 +30,7 @@ func (n *Node) InitShuffleHandlers() {
 
 	// Handle shuffle request (relay step)
 	n.Handle(MsgShuffleReq, func(msg Message) {
-		fmt.Printf("[%s] SHUFFLING DECK...\n", n.id)
+		n.EmitKind("shuffle", "shuffle", "[%s] SHUFFLING DECK...", n.id)
 		req, err := Decode[ShuffleRequest](msg)
 		if err != nil {
 			return
@@ -47,7 +47,7 @@ func (n *Node) InitShuffleHandlers() {
 				Deck: d,
 			})
 			n.FinalDeck = d
-			fmt.Printf("[%s] FINAL DECK RECIEVED\n", n.id)
+			n.EmitKind("shuffle", "shuffle", "[%s] FINAL DECK RECIEVED", n.id)
 			return
 		}
 
@@ -62,7 +62,7 @@ func (n *Node) InitShuffleHandlers() {
 
 	// Handle final deck broadcast
 	n.Handle(MsgFinalDeck, func(msg Message) {
-		fmt.Printf("[%s] FINAL DECK RECIEVED\n", n.id)
+		n.EmitKind("shuffle", "shuffle", "[%s] FINAL DECK RECIEVED", n.id)
 		final, err := Decode[FinalDeckMessage](msg)
 		if err != nil {
 			return
@@ -81,8 +81,8 @@ func (n *Node) StartShuffle() error {
 		return fmt.Errorf("not enough players to shuffle")
 	}
 
-	fmt.Printf("STARTING SHUFFLE\n")
-	fmt.Printf("[%s] SHUFFLING DECK...\n", n.id)
+	n.EmitKind("shuffle", "shuffle", "STARTING SHUFFLE")
+	n.EmitKind("shuffle", "shuffle", "[%s] SHUFFLING DECK...", n.id)
 	d := buildOrderedDeck()
 	_ = deck.Shuffle(d)
 	d = deck.EncryptDeck(d, n.modKey, n.prime)

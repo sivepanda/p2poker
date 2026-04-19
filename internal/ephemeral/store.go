@@ -12,8 +12,8 @@ import (
 //
 // Key convention for rounds:
 //
-//	"proposal-{roundID}"             - hosted by the proposer
-//	"{roundID}_verify_{nodeID}"      - hosted by each verifier
+//	"proposal-{roundID}-{attempt}"             - hosted by the proposer
+//	"{roundID}-{attempt}_verify_{nodeID}"      - hosted by each verifier
 type Store struct {
 	mu   sync.RWMutex
 	data map[string][]byte
@@ -26,19 +26,32 @@ func New() *Store {
 	}
 }
 
-// ProposalKey returns the canonical key for a round's proposal file.
-func ProposalKey(roundID uint64) string {
-	return fmt.Sprintf("proposal-%d", roundID)
+// ProposalKey returns the canonical key for a round attempt's proposal file.
+func ProposalKey(roundID uint64, attempt uint32) string {
+	return fmt.Sprintf("proposal-%d-%d", roundID, attempt)
 }
 
-// VerifyKey returns the canonical key for a node's verify receipt in a round.
-func VerifyKey(roundID uint64, nodeID string) string {
-	return fmt.Sprintf("%d_verify_%s", roundID, nodeID)
+// VerifyKey returns the canonical key for a node's verify receipt in a round attempt.
+func VerifyKey(roundID uint64, attempt uint32, nodeID string) string {
+	return fmt.Sprintf("%d-%d_verify_%s", roundID, attempt, nodeID)
+}
+
+// AutoFoldKey returns the canonical key for an attestor's auto-fold signature
+// hosted after K consecutive aborted attempts on roundID.
+func AutoFoldKey(roundID uint64, signerID string) string {
+	return fmt.Sprintf("auto_fold-%d-%s", roundID, signerID)
+}
+
+// AutoFoldPrefix returns the prefix shared by all auto-fold attestations for a
+// round, used for bulk cleanup on a later commit (same lagging pattern as
+// RoundPrefix does for verify receipts).
+func AutoFoldPrefix(roundID uint64) string {
+	return fmt.Sprintf("auto_fold-%d-", roundID)
 }
 
 // RoundPrefix returns the prefix shared by all ephemeral files for a round.
 func RoundPrefix(roundID uint64) string {
-	return fmt.Sprintf("%d_", roundID)
+	return fmt.Sprintf("%d-", roundID)
 }
 
 // Put writes a key-value pair. Value is arbitrary bytes (signed log data, etc.).

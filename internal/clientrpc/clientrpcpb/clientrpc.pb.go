@@ -1094,6 +1094,13 @@ type Event struct {
 	// Types that are valid to be assigned to Event:
 	//
 	//	*Event_PeerMessage
+	//	*Event_Log
+	//	*Event_GameStart
+	//	*Event_HoleCards
+	//	*Event_CommunityCards
+	//	*Event_RoundStarted
+	//	*Event_Action
+	//	*Event_AutoFold
 	Event         isEvent_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1145,6 +1152,69 @@ func (x *Event) GetPeerMessage() *PeerMessageEvent {
 	return nil
 }
 
+func (x *Event) GetLog() *LogEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_Log); ok {
+			return x.Log
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetGameStart() *GameStartEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_GameStart); ok {
+			return x.GameStart
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetHoleCards() *HoleCardsEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_HoleCards); ok {
+			return x.HoleCards
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetCommunityCards() *CommunityCardsEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_CommunityCards); ok {
+			return x.CommunityCards
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetRoundStarted() *RoundStartedEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_RoundStarted); ok {
+			return x.RoundStarted
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetAction() *ActionEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_Action); ok {
+			return x.Action
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetAutoFold() *AutoFoldEvent {
+	if x != nil {
+		if x, ok := x.Event.(*Event_AutoFold); ok {
+			return x.AutoFold
+		}
+	}
+	return nil
+}
+
 type isEvent_Event interface {
 	isEvent_Event()
 }
@@ -1153,7 +1223,471 @@ type Event_PeerMessage struct {
 	PeerMessage *PeerMessageEvent `protobuf:"bytes,1,opt,name=peer_message,json=peerMessage,proto3,oneof"`
 }
 
+type Event_Log struct {
+	Log *LogEvent `protobuf:"bytes,2,opt,name=log,proto3,oneof"`
+}
+
+type Event_GameStart struct {
+	GameStart *GameStartEvent `protobuf:"bytes,3,opt,name=game_start,json=gameStart,proto3,oneof"`
+}
+
+type Event_HoleCards struct {
+	HoleCards *HoleCardsEvent `protobuf:"bytes,4,opt,name=hole_cards,json=holeCards,proto3,oneof"`
+}
+
+type Event_CommunityCards struct {
+	CommunityCards *CommunityCardsEvent `protobuf:"bytes,5,opt,name=community_cards,json=communityCards,proto3,oneof"`
+}
+
+type Event_RoundStarted struct {
+	RoundStarted *RoundStartedEvent `protobuf:"bytes,6,opt,name=round_started,json=roundStarted,proto3,oneof"`
+}
+
+type Event_Action struct {
+	Action *ActionEvent `protobuf:"bytes,7,opt,name=action,proto3,oneof"`
+}
+
+type Event_AutoFold struct {
+	AutoFold *AutoFoldEvent `protobuf:"bytes,8,opt,name=auto_fold,json=autoFold,proto3,oneof"`
+}
+
 func (*Event_PeerMessage) isEvent_Event() {}
+
+func (*Event_Log) isEvent_Event() {}
+
+func (*Event_GameStart) isEvent_Event() {}
+
+func (*Event_HoleCards) isEvent_Event() {}
+
+func (*Event_CommunityCards) isEvent_Event() {}
+
+func (*Event_RoundStarted) isEvent_Event() {}
+
+func (*Event_Action) isEvent_Event() {}
+
+func (*Event_AutoFold) isEvent_Event() {}
+
+// GameStartEvent fires once per game when dispatch has broadcast the seating
+// order. A frontend can use order+my_seat to render the table layout.
+type GameStartEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Order         []string               `protobuf:"bytes,2,rep,name=order,proto3" json:"order,omitempty"`
+	MySeat        int32                  `protobuf:"varint,3,opt,name=my_seat,json=mySeat,proto3" json:"my_seat,omitempty"`
+	NodeId        string                 `protobuf:"bytes,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameStartEvent) Reset() {
+	*x = GameStartEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameStartEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameStartEvent) ProtoMessage() {}
+
+func (x *GameStartEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameStartEvent.ProtoReflect.Descriptor instead.
+func (*GameStartEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GameStartEvent) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *GameStartEvent) GetOrder() []string {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
+func (x *GameStartEvent) GetMySeat() int32 {
+	if x != nil {
+		return x.MySeat
+	}
+	return 0
+}
+
+func (x *GameStartEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+// HoleCardsEvent carries this node's two hole cards in their full plaintext
+// (e.g. "5", "33"). The frontend maps the integer codes to suit+rank.
+type HoleCardsEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	Card1         string                 `protobuf:"bytes,2,opt,name=card1,proto3" json:"card1,omitempty"`
+	Card2         string                 `protobuf:"bytes,3,opt,name=card2,proto3" json:"card2,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HoleCardsEvent) Reset() {
+	*x = HoleCardsEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HoleCardsEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HoleCardsEvent) ProtoMessage() {}
+
+func (x *HoleCardsEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HoleCardsEvent.ProtoReflect.Descriptor instead.
+func (*HoleCardsEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *HoleCardsEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *HoleCardsEvent) GetCard1() string {
+	if x != nil {
+		return x.Card1
+	}
+	return ""
+}
+
+func (x *HoleCardsEvent) GetCard2() string {
+	if x != nil {
+		return x.Card2
+	}
+	return ""
+}
+
+// CommunityCardsEvent carries the full, cumulative list of revealed
+// community cards. Fired once per new card (so the frontend sees flop,
+// turn, river in order).
+type CommunityCardsEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	Cards         []string               `protobuf:"bytes,2,rep,name=cards,proto3" json:"cards,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommunityCardsEvent) Reset() {
+	*x = CommunityCardsEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommunityCardsEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommunityCardsEvent) ProtoMessage() {}
+
+func (x *CommunityCardsEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommunityCardsEvent.ProtoReflect.Descriptor instead.
+func (*CommunityCardsEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *CommunityCardsEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *CommunityCardsEvent) GetCards() []string {
+	if x != nil {
+		return x.Cards
+	}
+	return nil
+}
+
+// RoundStartedEvent marks the start of round_id with proposer at the given
+// seat. Frontends drive "whose turn is it" off this event.
+type RoundStartedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	RoundId       uint64                 `protobuf:"varint,2,opt,name=round_id,json=roundId,proto3" json:"round_id,omitempty"`
+	ProposerSeat  uint32                 `protobuf:"varint,3,opt,name=proposer_seat,json=proposerSeat,proto3" json:"proposer_seat,omitempty"`
+	MySeat        int32                  `protobuf:"varint,4,opt,name=my_seat,json=mySeat,proto3" json:"my_seat,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoundStartedEvent) Reset() {
+	*x = RoundStartedEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoundStartedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoundStartedEvent) ProtoMessage() {}
+
+func (x *RoundStartedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoundStartedEvent.ProtoReflect.Descriptor instead.
+func (*RoundStartedEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *RoundStartedEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *RoundStartedEvent) GetRoundId() uint64 {
+	if x != nil {
+		return x.RoundId
+	}
+	return 0
+}
+
+func (x *RoundStartedEvent) GetProposerSeat() uint32 {
+	if x != nil {
+		return x.ProposerSeat
+	}
+	return 0
+}
+
+func (x *RoundStartedEvent) GetMySeat() int32 {
+	if x != nil {
+		return x.MySeat
+	}
+	return 0
+}
+
+// ActionEvent reports the outcome of a single propose/verify attempt:
+// the seat that acted, what action they chose, and whether it was
+// committed, rejected, or timed out.
+type ActionEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	RoundId       uint64                 `protobuf:"varint,2,opt,name=round_id,json=roundId,proto3" json:"round_id,omitempty"`
+	Attempt       uint32                 `protobuf:"varint,3,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Seat          int32                  `protobuf:"varint,4,opt,name=seat,proto3" json:"seat,omitempty"`
+	Kind          ActionKind             `protobuf:"varint,5,opt,name=kind,proto3,enum=clientrpc.v1.ActionKind" json:"kind,omitempty"`
+	Amount        uint64                 `protobuf:"varint,6,opt,name=amount,proto3" json:"amount,omitempty"`
+	Outcome       string                 `protobuf:"bytes,7,opt,name=outcome,proto3" json:"outcome,omitempty"` // "committed" | "rejected" | "timeout"
+	Reason        string                 `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ActionEvent) Reset() {
+	*x = ActionEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActionEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActionEvent) ProtoMessage() {}
+
+func (x *ActionEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActionEvent.ProtoReflect.Descriptor instead.
+func (*ActionEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ActionEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *ActionEvent) GetRoundId() uint64 {
+	if x != nil {
+		return x.RoundId
+	}
+	return 0
+}
+
+func (x *ActionEvent) GetAttempt() uint32 {
+	if x != nil {
+		return x.Attempt
+	}
+	return 0
+}
+
+func (x *ActionEvent) GetSeat() int32 {
+	if x != nil {
+		return x.Seat
+	}
+	return 0
+}
+
+func (x *ActionEvent) GetKind() ActionKind {
+	if x != nil {
+		return x.Kind
+	}
+	return ActionKind_ACTION_KIND_FOLD
+}
+
+func (x *ActionEvent) GetAmount() uint64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *ActionEvent) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *ActionEvent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// AutoFoldEvent fires when a proposer is auto-folded after exhausting
+// their attempt budget.
+type AutoFoldEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	RoundId       uint64                 `protobuf:"varint,2,opt,name=round_id,json=roundId,proto3" json:"round_id,omitempty"`
+	TargetSeat    uint32                 `protobuf:"varint,3,opt,name=target_seat,json=targetSeat,proto3" json:"target_seat,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AutoFoldEvent) Reset() {
+	*x = AutoFoldEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AutoFoldEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AutoFoldEvent) ProtoMessage() {}
+
+func (x *AutoFoldEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AutoFoldEvent.ProtoReflect.Descriptor instead.
+func (*AutoFoldEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *AutoFoldEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *AutoFoldEvent) GetRoundId() uint64 {
+	if x != nil {
+		return x.RoundId
+	}
+	return 0
+}
+
+func (x *AutoFoldEvent) GetTargetSeat() uint32 {
+	if x != nil {
+		return x.TargetSeat
+	}
+	return 0
+}
 
 type PeerMessageEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1166,7 +1700,7 @@ type PeerMessageEvent struct {
 
 func (x *PeerMessageEvent) Reset() {
 	*x = PeerMessageEvent{}
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[25]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1712,7 @@ func (x *PeerMessageEvent) String() string {
 func (*PeerMessageEvent) ProtoMessage() {}
 
 func (x *PeerMessageEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[25]
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1191,7 +1725,7 @@ func (x *PeerMessageEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeerMessageEvent.ProtoReflect.Descriptor instead.
 func (*PeerMessageEvent) Descriptor() ([]byte, []int) {
-	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{25}
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *PeerMessageEvent) GetFrom() string {
@@ -1211,6 +1745,115 @@ func (x *PeerMessageEvent) GetMessageType() string {
 func (x *PeerMessageEvent) GetPayload() []byte {
 	if x != nil {
 		return x.Payload
+	}
+	return nil
+}
+
+// LogEvent mirrors every CLI-visible signal the node emits (shuffle/deal
+// progress, round lifecycle, auto-fold, sim harness chatter, etc.) so a
+// frontend can observe play without reading stdout.
+//
+// kind categorizes the event: "log", "game_start", "shuffle", "deal",
+// "community", "round", "attempt", "auto_fold", "sim". component is a
+// free-form tag (e.g. "runner", "shuffle") to aid filtering. fields carries
+// structured extras; cards carries any card values the event wants to
+// surface (e.g. {"hole1": "5H", "hole2": "AS"}).
+type LogEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TimestampNs   int64                  `protobuf:"varint,1,opt,name=timestamp_ns,json=timestampNs,proto3" json:"timestamp_ns,omitempty"`
+	NodeId        string                 `protobuf:"bytes,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	SessionId     string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Kind          string                 `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	Component     string                 `protobuf:"bytes,5,opt,name=component,proto3" json:"component,omitempty"`
+	Message       string                 `protobuf:"bytes,6,opt,name=message,proto3" json:"message,omitempty"`
+	Fields        map[string]string      `protobuf:"bytes,7,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Cards         map[string]string      `protobuf:"bytes,8,rep,name=cards,proto3" json:"cards,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogEvent) Reset() {
+	*x = LogEvent{}
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogEvent) ProtoMessage() {}
+
+func (x *LogEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_clientrpc_v1_clientrpc_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogEvent.ProtoReflect.Descriptor instead.
+func (*LogEvent) Descriptor() ([]byte, []int) {
+	return file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *LogEvent) GetTimestampNs() int64 {
+	if x != nil {
+		return x.TimestampNs
+	}
+	return 0
+}
+
+func (x *LogEvent) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *LogEvent) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *LogEvent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *LogEvent) GetComponent() string {
+	if x != nil {
+		return x.Component
+	}
+	return ""
+}
+
+func (x *LogEvent) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *LogEvent) GetFields() map[string]string {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
+}
+
+func (x *LogEvent) GetCards() map[string]string {
+	if x != nil {
+		return x.Cards
 	}
 	return nil
 }
@@ -1269,14 +1912,72 @@ const file_proto_clientrpc_v1_clientrpc_proto_rawDesc = "" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\"\x17\n" +
 	"\x15DetachDispatchRequest\"\x18\n" +
 	"\x16DetachDispatchResponse\"\x18\n" +
-	"\x16SubscribeEventsRequest\"U\n" +
+	"\x16SubscribeEventsRequest\"\x86\x04\n" +
 	"\x05Event\x12C\n" +
-	"\fpeer_message\x18\x01 \x01(\v2\x1e.clientrpc.v1.PeerMessageEventH\x00R\vpeerMessageB\a\n" +
-	"\x05event\"c\n" +
+	"\fpeer_message\x18\x01 \x01(\v2\x1e.clientrpc.v1.PeerMessageEventH\x00R\vpeerMessage\x12*\n" +
+	"\x03log\x18\x02 \x01(\v2\x16.clientrpc.v1.LogEventH\x00R\x03log\x12=\n" +
+	"\n" +
+	"game_start\x18\x03 \x01(\v2\x1c.clientrpc.v1.GameStartEventH\x00R\tgameStart\x12=\n" +
+	"\n" +
+	"hole_cards\x18\x04 \x01(\v2\x1c.clientrpc.v1.HoleCardsEventH\x00R\tholeCards\x12L\n" +
+	"\x0fcommunity_cards\x18\x05 \x01(\v2!.clientrpc.v1.CommunityCardsEventH\x00R\x0ecommunityCards\x12F\n" +
+	"\rround_started\x18\x06 \x01(\v2\x1f.clientrpc.v1.RoundStartedEventH\x00R\froundStarted\x123\n" +
+	"\x06action\x18\a \x01(\v2\x19.clientrpc.v1.ActionEventH\x00R\x06action\x12:\n" +
+	"\tauto_fold\x18\b \x01(\v2\x1b.clientrpc.v1.AutoFoldEventH\x00R\bautoFoldB\a\n" +
+	"\x05event\"w\n" +
+	"\x0eGameStartEvent\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05order\x18\x02 \x03(\tR\x05order\x12\x17\n" +
+	"\amy_seat\x18\x03 \x01(\x05R\x06mySeat\x12\x17\n" +
+	"\anode_id\x18\x04 \x01(\tR\x06nodeId\"U\n" +
+	"\x0eHoleCardsEvent\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x14\n" +
+	"\x05card1\x18\x02 \x01(\tR\x05card1\x12\x14\n" +
+	"\x05card2\x18\x03 \x01(\tR\x05card2\"D\n" +
+	"\x13CommunityCardsEvent\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x14\n" +
+	"\x05cards\x18\x02 \x03(\tR\x05cards\"\x85\x01\n" +
+	"\x11RoundStartedEvent\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x19\n" +
+	"\bround_id\x18\x02 \x01(\x04R\aroundId\x12#\n" +
+	"\rproposer_seat\x18\x03 \x01(\rR\fproposerSeat\x12\x17\n" +
+	"\amy_seat\x18\x04 \x01(\x05R\x06mySeat\"\xe7\x01\n" +
+	"\vActionEvent\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x19\n" +
+	"\bround_id\x18\x02 \x01(\x04R\aroundId\x12\x18\n" +
+	"\aattempt\x18\x03 \x01(\rR\aattempt\x12\x12\n" +
+	"\x04seat\x18\x04 \x01(\x05R\x04seat\x12,\n" +
+	"\x04kind\x18\x05 \x01(\x0e2\x18.clientrpc.v1.ActionKindR\x04kind\x12\x16\n" +
+	"\x06amount\x18\x06 \x01(\x04R\x06amount\x12\x18\n" +
+	"\aoutcome\x18\a \x01(\tR\aoutcome\x12\x16\n" +
+	"\x06reason\x18\b \x01(\tR\x06reason\"d\n" +
+	"\rAutoFoldEvent\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x19\n" +
+	"\bround_id\x18\x02 \x01(\x04R\aroundId\x12\x1f\n" +
+	"\vtarget_seat\x18\x03 \x01(\rR\n" +
+	"targetSeat\"c\n" +
 	"\x10PeerMessageEvent\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12!\n" +
 	"\fmessage_type\x18\x02 \x01(\tR\vmessageType\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload*f\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\"\x9b\x03\n" +
+	"\bLogEvent\x12!\n" +
+	"\ftimestamp_ns\x18\x01 \x01(\x03R\vtimestampNs\x12\x17\n" +
+	"\anode_id\x18\x02 \x01(\tR\x06nodeId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x03 \x01(\tR\tsessionId\x12\x12\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\x12\x1c\n" +
+	"\tcomponent\x18\x05 \x01(\tR\tcomponent\x12\x18\n" +
+	"\amessage\x18\x06 \x01(\tR\amessage\x12:\n" +
+	"\x06fields\x18\a \x03(\v2\".clientrpc.v1.LogEvent.FieldsEntryR\x06fields\x127\n" +
+	"\x05cards\x18\b \x03(\v2!.clientrpc.v1.LogEvent.CardsEntryR\x05cards\x1a9\n" +
+	"\vFieldsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a8\n" +
+	"\n" +
+	"CardsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01*f\n" +
 	"\n" +
 	"ActionKind\x12\x14\n" +
 	"\x10ACTION_KIND_FOLD\x10\x00\x12\x15\n" +
@@ -1310,7 +2011,7 @@ func file_proto_clientrpc_v1_clientrpc_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_clientrpc_v1_clientrpc_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_clientrpc_v1_clientrpc_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_proto_clientrpc_v1_clientrpc_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_proto_clientrpc_v1_clientrpc_proto_goTypes = []any{
 	(ActionKind)(0),                // 0: clientrpc.v1.ActionKind
 	(*CreateSessionRequest)(nil),   // 1: clientrpc.v1.CreateSessionRequest
@@ -1338,41 +2039,60 @@ var file_proto_clientrpc_v1_clientrpc_proto_goTypes = []any{
 	(*DetachDispatchResponse)(nil), // 23: clientrpc.v1.DetachDispatchResponse
 	(*SubscribeEventsRequest)(nil), // 24: clientrpc.v1.SubscribeEventsRequest
 	(*Event)(nil),                  // 25: clientrpc.v1.Event
-	(*PeerMessageEvent)(nil),       // 26: clientrpc.v1.PeerMessageEvent
+	(*GameStartEvent)(nil),         // 26: clientrpc.v1.GameStartEvent
+	(*HoleCardsEvent)(nil),         // 27: clientrpc.v1.HoleCardsEvent
+	(*CommunityCardsEvent)(nil),    // 28: clientrpc.v1.CommunityCardsEvent
+	(*RoundStartedEvent)(nil),      // 29: clientrpc.v1.RoundStartedEvent
+	(*ActionEvent)(nil),            // 30: clientrpc.v1.ActionEvent
+	(*AutoFoldEvent)(nil),          // 31: clientrpc.v1.AutoFoldEvent
+	(*PeerMessageEvent)(nil),       // 32: clientrpc.v1.PeerMessageEvent
+	(*LogEvent)(nil),               // 33: clientrpc.v1.LogEvent
+	nil,                            // 34: clientrpc.v1.LogEvent.FieldsEntry
+	nil,                            // 35: clientrpc.v1.LogEvent.CardsEntry
 }
 var file_proto_clientrpc_v1_clientrpc_proto_depIdxs = []int32{
 	7,  // 0: clientrpc.v1.ListPeersResponse.peers:type_name -> clientrpc.v1.PeerInfo
 	0,  // 1: clientrpc.v1.SubmitActionRequest.kind:type_name -> clientrpc.v1.ActionKind
-	26, // 2: clientrpc.v1.Event.peer_message:type_name -> clientrpc.v1.PeerMessageEvent
-	1,  // 3: clientrpc.v1.PokerNode.CreateSession:input_type -> clientrpc.v1.CreateSessionRequest
-	3,  // 4: clientrpc.v1.PokerNode.JoinSession:input_type -> clientrpc.v1.JoinSessionRequest
-	5,  // 5: clientrpc.v1.PokerNode.ListPeers:input_type -> clientrpc.v1.ListPeersRequest
-	8,  // 6: clientrpc.v1.PokerNode.ConnectPeers:input_type -> clientrpc.v1.ConnectPeersRequest
-	10, // 7: clientrpc.v1.PokerNode.ListSessions:input_type -> clientrpc.v1.ListSessionsRequest
-	12, // 8: clientrpc.v1.PokerNode.StartGame:input_type -> clientrpc.v1.StartGameRequest
-	14, // 9: clientrpc.v1.PokerNode.SubmitAction:input_type -> clientrpc.v1.SubmitActionRequest
-	16, // 10: clientrpc.v1.PokerNode.GetCards:input_type -> clientrpc.v1.GetCardsRequest
-	18, // 11: clientrpc.v1.PokerNode.GetNodeInfo:input_type -> clientrpc.v1.GetNodeInfoRequest
-	20, // 12: clientrpc.v1.PokerNode.AttachDispatch:input_type -> clientrpc.v1.AttachDispatchRequest
-	22, // 13: clientrpc.v1.PokerNode.DetachDispatch:input_type -> clientrpc.v1.DetachDispatchRequest
-	24, // 14: clientrpc.v1.PokerNode.SubscribeEvents:input_type -> clientrpc.v1.SubscribeEventsRequest
-	2,  // 15: clientrpc.v1.PokerNode.CreateSession:output_type -> clientrpc.v1.CreateSessionResponse
-	4,  // 16: clientrpc.v1.PokerNode.JoinSession:output_type -> clientrpc.v1.JoinSessionResponse
-	6,  // 17: clientrpc.v1.PokerNode.ListPeers:output_type -> clientrpc.v1.ListPeersResponse
-	9,  // 18: clientrpc.v1.PokerNode.ConnectPeers:output_type -> clientrpc.v1.ConnectPeersResponse
-	11, // 19: clientrpc.v1.PokerNode.ListSessions:output_type -> clientrpc.v1.ListSessionsResponse
-	13, // 20: clientrpc.v1.PokerNode.StartGame:output_type -> clientrpc.v1.StartGameResponse
-	15, // 21: clientrpc.v1.PokerNode.SubmitAction:output_type -> clientrpc.v1.SubmitActionResponse
-	17, // 22: clientrpc.v1.PokerNode.GetCards:output_type -> clientrpc.v1.GetCardsResponse
-	19, // 23: clientrpc.v1.PokerNode.GetNodeInfo:output_type -> clientrpc.v1.GetNodeInfoResponse
-	21, // 24: clientrpc.v1.PokerNode.AttachDispatch:output_type -> clientrpc.v1.AttachDispatchResponse
-	23, // 25: clientrpc.v1.PokerNode.DetachDispatch:output_type -> clientrpc.v1.DetachDispatchResponse
-	25, // 26: clientrpc.v1.PokerNode.SubscribeEvents:output_type -> clientrpc.v1.Event
-	15, // [15:27] is the sub-list for method output_type
-	3,  // [3:15] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	32, // 2: clientrpc.v1.Event.peer_message:type_name -> clientrpc.v1.PeerMessageEvent
+	33, // 3: clientrpc.v1.Event.log:type_name -> clientrpc.v1.LogEvent
+	26, // 4: clientrpc.v1.Event.game_start:type_name -> clientrpc.v1.GameStartEvent
+	27, // 5: clientrpc.v1.Event.hole_cards:type_name -> clientrpc.v1.HoleCardsEvent
+	28, // 6: clientrpc.v1.Event.community_cards:type_name -> clientrpc.v1.CommunityCardsEvent
+	29, // 7: clientrpc.v1.Event.round_started:type_name -> clientrpc.v1.RoundStartedEvent
+	30, // 8: clientrpc.v1.Event.action:type_name -> clientrpc.v1.ActionEvent
+	31, // 9: clientrpc.v1.Event.auto_fold:type_name -> clientrpc.v1.AutoFoldEvent
+	0,  // 10: clientrpc.v1.ActionEvent.kind:type_name -> clientrpc.v1.ActionKind
+	34, // 11: clientrpc.v1.LogEvent.fields:type_name -> clientrpc.v1.LogEvent.FieldsEntry
+	35, // 12: clientrpc.v1.LogEvent.cards:type_name -> clientrpc.v1.LogEvent.CardsEntry
+	1,  // 13: clientrpc.v1.PokerNode.CreateSession:input_type -> clientrpc.v1.CreateSessionRequest
+	3,  // 14: clientrpc.v1.PokerNode.JoinSession:input_type -> clientrpc.v1.JoinSessionRequest
+	5,  // 15: clientrpc.v1.PokerNode.ListPeers:input_type -> clientrpc.v1.ListPeersRequest
+	8,  // 16: clientrpc.v1.PokerNode.ConnectPeers:input_type -> clientrpc.v1.ConnectPeersRequest
+	10, // 17: clientrpc.v1.PokerNode.ListSessions:input_type -> clientrpc.v1.ListSessionsRequest
+	12, // 18: clientrpc.v1.PokerNode.StartGame:input_type -> clientrpc.v1.StartGameRequest
+	14, // 19: clientrpc.v1.PokerNode.SubmitAction:input_type -> clientrpc.v1.SubmitActionRequest
+	16, // 20: clientrpc.v1.PokerNode.GetCards:input_type -> clientrpc.v1.GetCardsRequest
+	18, // 21: clientrpc.v1.PokerNode.GetNodeInfo:input_type -> clientrpc.v1.GetNodeInfoRequest
+	20, // 22: clientrpc.v1.PokerNode.AttachDispatch:input_type -> clientrpc.v1.AttachDispatchRequest
+	22, // 23: clientrpc.v1.PokerNode.DetachDispatch:input_type -> clientrpc.v1.DetachDispatchRequest
+	24, // 24: clientrpc.v1.PokerNode.SubscribeEvents:input_type -> clientrpc.v1.SubscribeEventsRequest
+	2,  // 25: clientrpc.v1.PokerNode.CreateSession:output_type -> clientrpc.v1.CreateSessionResponse
+	4,  // 26: clientrpc.v1.PokerNode.JoinSession:output_type -> clientrpc.v1.JoinSessionResponse
+	6,  // 27: clientrpc.v1.PokerNode.ListPeers:output_type -> clientrpc.v1.ListPeersResponse
+	9,  // 28: clientrpc.v1.PokerNode.ConnectPeers:output_type -> clientrpc.v1.ConnectPeersResponse
+	11, // 29: clientrpc.v1.PokerNode.ListSessions:output_type -> clientrpc.v1.ListSessionsResponse
+	13, // 30: clientrpc.v1.PokerNode.StartGame:output_type -> clientrpc.v1.StartGameResponse
+	15, // 31: clientrpc.v1.PokerNode.SubmitAction:output_type -> clientrpc.v1.SubmitActionResponse
+	17, // 32: clientrpc.v1.PokerNode.GetCards:output_type -> clientrpc.v1.GetCardsResponse
+	19, // 33: clientrpc.v1.PokerNode.GetNodeInfo:output_type -> clientrpc.v1.GetNodeInfoResponse
+	21, // 34: clientrpc.v1.PokerNode.AttachDispatch:output_type -> clientrpc.v1.AttachDispatchResponse
+	23, // 35: clientrpc.v1.PokerNode.DetachDispatch:output_type -> clientrpc.v1.DetachDispatchResponse
+	25, // 36: clientrpc.v1.PokerNode.SubscribeEvents:output_type -> clientrpc.v1.Event
+	25, // [25:37] is the sub-list for method output_type
+	13, // [13:25] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_proto_clientrpc_v1_clientrpc_proto_init() }
@@ -1382,6 +2102,13 @@ func file_proto_clientrpc_v1_clientrpc_proto_init() {
 	}
 	file_proto_clientrpc_v1_clientrpc_proto_msgTypes[24].OneofWrappers = []any{
 		(*Event_PeerMessage)(nil),
+		(*Event_Log)(nil),
+		(*Event_GameStart)(nil),
+		(*Event_HoleCards)(nil),
+		(*Event_CommunityCards)(nil),
+		(*Event_RoundStarted)(nil),
+		(*Event_Action)(nil),
+		(*Event_AutoFold)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1389,7 +2116,7 @@ func file_proto_clientrpc_v1_clientrpc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_clientrpc_v1_clientrpc_proto_rawDesc), len(file_proto_clientrpc_v1_clientrpc_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   26,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

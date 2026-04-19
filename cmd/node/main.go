@@ -68,7 +68,11 @@ func main() {
 	// When dispatch sends a game start, spin up the round runner.
 	node.SetGameStartHandler(func(sessionID string, order []string) {
 		fmt.Printf("game starting in session %s, order: %v\n", sessionID, order)
-		runner := round.New(node, node.Store(), sk, pk)
+		sc := node.SessionConfig()
+		runner := round.New(node, node.Store(), sk, pk, round.Config{
+			TimeoutInterval: sc.TimeoutInterval,
+			MaxAttempts:     sc.MaxAttempts,
+		})
 		if rpcSrv != nil {
 			rpcSrv.SetRunner(runner)
 			defer rpcSrv.SetRunner(nil)

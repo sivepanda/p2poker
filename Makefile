@@ -1,7 +1,6 @@
 .PHONY: sim build dispatch node clean proto
 
 build:
-	go build -o app ./cmd/sim
 	go build -o dispatch ./cmd/dispatch
 	go build -o node ./cmd/node
 	go build -o sim ./cmd/sim

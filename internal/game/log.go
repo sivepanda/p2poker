@@ -11,17 +11,41 @@ import (
 	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
 )
 
+// autoFoldTag is mixed into the attestation payload to domain-separate it from
+// regular proposal signatures.
+const autoFoldTag = "auto_fold"
+
 // Entry is a committed log entry. Doubles as a proposal before commit.
+//
+// Auto-fold entries are distinguished by (Action.Kind == ActionFold &&
+// len(Signature) == 0). In that case CoSigners/CoSignatures carry the
+// ed25519 attestations that stand in for the absent self-signature.
 type Entry struct {
-	RoundID   uint64
-	PlayerID  uint8
-	Action    Action
-	Signature []byte
-	Data      []byte // arbitrary round-specific payload (e.g. node order in entry 0)
+	RoundID      uint64
+	PlayerID     uint8 // for auto-fold, this is the target seat
+	Action       Action
+	Signature    []byte
+	CoSigners    []uint8  // auto-fold only: attestor seats, sorted ascending
+	CoSignatures [][]byte // auto-fold only: same length & order as CoSigners
+	Data         []byte   // arbitrary round-specific payload (e.g. node order in entry 0)
 }
 
-// Bytes [8 RoundID BE][1 PlayerID][Action bytes][2 sig len BE][sig][4 data len BE][data].
-// Prior-entry sigs are hashed into the log chain
+// IsAutoFold reports whether e is an auto-fold entry (fold action, no
+// self-signature, relying on CoSigners/CoSignatures instead).
+func (e Entry) IsAutoFold() bool {
+	return e.Action.Kind == ActionFold && len(e.Signature) == 0
+}
+
+// Bytes encoding:
+//
+//	[8 RoundID BE][1 PlayerID][Action(9)][2 sigLen BE][sig]
+//	if auto-fold:
+//	    [1 cosigCount]
+//	    for each cosig: [1 signerID][2 cosigLen BE][cosig bytes]
+//	[4 dataLen BE][data]
+//
+// Normal (signed) entries omit the cosig section entirely, preserving the
+// hash-chain encoding used by prior tests and committed logs.
 func (e Entry) Bytes() []byte {
 	buf := make([]byte, 8+1)
 	binary.BigEndian.PutUint64(buf[:8], e.RoundID)
@@ -32,6 +56,18 @@ func (e Entry) Bytes() []byte {
 	binary.BigEndian.PutUint16(sigLen, uint16(len(e.Signature)))
 	buf = append(buf, sigLen...)
 	buf = append(buf, e.Signature...)
+
+	if e.IsAutoFold() {
+		buf = append(buf, byte(len(e.CoSigners)))
+		for i, signer := range e.CoSigners {
+			buf = append(buf, signer)
+			sig := e.CoSignatures[i]
+			cosigLen := make([]byte, 2)
+			binary.BigEndian.PutUint16(cosigLen, uint16(len(sig)))
+			buf = append(buf, cosigLen...)
+			buf = append(buf, sig...)
+		}
+	}
 
 	dataLen := make([]byte, 4)
 	binary.BigEndian.PutUint32(dataLen, uint32(len(e.Data)))
@@ -120,6 +156,98 @@ func (l *Log) RollbackLast() {
 	if len(l.entries) > 0 {
 		l.entries = l.entries[:len(l.entries)-1]
 	}
+}
+
+// autoFoldPayload: logBytes || "auto_fold" || roundID(8BE) || targetSeat(1).
+func (l *Log) autoFoldPayload(roundID uint64, targetSeat uint8) []byte {
+	logBytes := l.Bytes()
+	payload := make([]byte, 0, len(logBytes)+len(autoFoldTag)+9)
+	payload = append(payload, logBytes...)
+	payload = append(payload, autoFoldTag...)
+	roundBuf := make([]byte, 8)
+	binary.BigEndian.PutUint64(roundBuf, roundID)
+	payload = append(payload, roundBuf...)
+	payload = append(payload, targetSeat)
+	return payload
+}
+
+// BuildAutoFoldAttestation: one attestor's ed25519 sig over autoFoldPayload.
+func (l *Log) BuildAutoFoldAttestation(roundID uint64, targetSeat uint8, sk ed25519.PrivateKey) []byte {
+	return cryptolog.Sign(sk, l.autoFoldPayload(roundID, targetSeat))
+}
+
+// VerifyAutoFoldAttestation checks one attestor's sig.
+func (l *Log) VerifyAutoFoldAttestation(roundID uint64, targetSeat uint8, pk ed25519.PublicKey, sig []byte) error {
+	if len(pk) != ed25519.PublicKeySize {
+		return errors.New("attestor has no public key")
+	}
+	if !cryptolog.Verify(pk, l.autoFoldPayload(roundID, targetSeat), sig) {
+		return errors.New("invalid auto-fold attestation signature")
+	}
+	return nil
+}
+
+// ExpectedAutoFoldAttestors: non-folded seats minus target, sorted asc.
+func (l *Log) ExpectedAutoFoldAttestors(targetSeat uint8) []uint8 {
+	state := Replay(l.entries, l.numPlayers, l.startingStack)
+	out := make([]uint8, 0, l.numPlayers)
+	for seat := uint8(0); seat < l.numPlayers; seat++ {
+		if seat == targetSeat || state.Folded[seat] {
+			continue
+		}
+		out = append(out, seat)
+	}
+	return out
+}
+
+// VerifyAutoFoldEntry: round match, auto-fold shape, target valid/unfolded,
+// CoSigners equals expected set, every co-sig verifies.
+func (l *Log) VerifyAutoFoldEntry(e Entry, pks map[uint8]ed25519.PublicKey) error {
+	if e.RoundID != l.RoundID() {
+		return fmt.Errorf("auto-fold round mismatch: got %d, want %d", e.RoundID, l.RoundID())
+	}
+	if !e.IsAutoFold() {
+		return errors.New("entry is not an auto-fold")
+	}
+	if e.PlayerID >= l.numPlayers {
+		return fmt.Errorf("auto-fold target seat %d out of range", e.PlayerID)
+	}
+	state := Replay(l.entries, l.numPlayers, l.startingStack)
+	if state.Folded[e.PlayerID] {
+		return fmt.Errorf("auto-fold target seat %d already folded", e.PlayerID)
+	}
+	expected := l.ExpectedAutoFoldAttestors(e.PlayerID)
+	if len(expected) == 0 {
+		return errors.New("no eligible attestors for auto-fold")
+	}
+	if len(e.CoSigners) != len(expected) {
+		return fmt.Errorf("auto-fold co-signer count %d, want %d", len(e.CoSigners), len(expected))
+	}
+	if len(e.CoSignatures) != len(e.CoSigners) {
+		return fmt.Errorf("auto-fold co-signatures/co-signers length mismatch (%d vs %d)", len(e.CoSignatures), len(e.CoSigners))
+	}
+	for i, seat := range e.CoSigners {
+		if seat != expected[i] {
+			return fmt.Errorf("auto-fold co-signer[%d] = %d, want %d", i, seat, expected[i])
+		}
+		pk, ok := pks[seat]
+		if !ok {
+			return fmt.Errorf("auto-fold attestor %d: no public key registered", seat)
+		}
+		if err := l.VerifyAutoFoldAttestation(e.RoundID, e.PlayerID, pk, e.CoSignatures[i]); err != nil {
+			return fmt.Errorf("auto-fold attestor %d: %w", seat, err)
+		}
+	}
+	return nil
+}
+
+// AppendAutoFold verifies then appends. No mutation on failure.
+func (l *Log) AppendAutoFold(e Entry, pks map[uint8]ed25519.PublicKey) error {
+	if err := l.VerifyAutoFoldEntry(e, pks); err != nil {
+		return err
+	}
+	l.entries = append(l.entries, e)
+	return nil
 }
 
 // BuildProposal signs (l.Bytes() || action.Bytes()).

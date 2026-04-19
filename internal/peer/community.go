@@ -2,6 +2,7 @@ package peer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sivepanda/p2poker/internal/crypto/deck"
 )
@@ -33,7 +34,7 @@ func (n *Node) InitCommunityHandlers() {
 		decryptedData := deck.DecryptCard(req.CurrentData, n.modKey, n.prime)
 
 		// If we're the last in the ring (message came back to initiator),
-		// all layers are stripped — broadcast the plaintext.
+		// all layers are stripped; broadcast the plaintext.
 		if req.InitiatorID == n.ID() {
 			plaintext := string(decryptedData)
 			n.appendCommunity(plaintext)
@@ -81,7 +82,7 @@ func (n *Node) RevealCommunityCards(indices []int) error {
 		nextIdx := (n.SeatIdx + 1) % len(n.Order)
 		nextID := n.Order[nextIdx]
 
-		fmt.Printf("[%s] Starting community relay for card %d -> sending to %s\n", n.id, cardIdx, nextID)
+		n.EmitKind("community", "community", "[%s] Starting community relay for card %d -> sending to %s", n.id, cardIdx, nextID)
 
 		err := n.Send(nextID, MsgCommunityRelay, CommunityRelayMessage{
 			CardIdx:     cardIdx,
@@ -122,8 +123,18 @@ func (n *Node) RevealRiver() error {
 
 func (n *Node) appendCommunity(card string) {
 	n.communityMu.Lock()
-	defer n.communityMu.Unlock()
 	n.community = append(n.community, card)
+	snapshot := make([]string, len(n.community))
+	copy(snapshot, n.community)
+	n.communityMu.Unlock()
+
+	cards := make(map[string]string, len(snapshot))
+	for i, c := range snapshot {
+		cards[fmt.Sprintf("card%d", i+1)] = c
+	}
+	n.EmitCards("community", "community",
+		fmt.Sprintf("[%s] community card revealed: %s (total %d)", n.id, card, len(snapshot)),
+		cards)
 }
 
 // CommunityCards returns the currently revealed community cards.
@@ -145,17 +156,23 @@ func (n *Node) CommunityCount() int {
 // PrintCommunity prints the revealed community cards.
 func (n *Node) PrintCommunity() {
 	n.communityMu.RLock()
-	defer n.communityMu.RUnlock()
+	snapshot := make([]string, len(n.community))
+	copy(snapshot, n.community)
+	n.communityMu.RUnlock()
 
-	if len(n.community) == 0 {
-		fmt.Printf("[%s] Community: [none yet]\n", n.id)
+	if len(snapshot) == 0 {
+		n.EmitKind("community", "community", "[%s] Community: [none yet]", n.id)
 		return
 	}
 
-	fmt.Println("--------------------------")
-	fmt.Printf("[%s] COMMUNITY CARDS\n", n.id)
-	for i, c := range n.community {
-		fmt.Printf("  Card %d: %s\n", i+1, c)
+	var buf strings.Builder
+	buf.WriteString("--------------------------\n")
+	fmt.Fprintf(&buf, "[%s] COMMUNITY CARDS\n", n.id)
+	cards := make(map[string]string, len(snapshot))
+	for i, c := range snapshot {
+		fmt.Fprintf(&buf, "  Card %d: %s\n", i+1, c)
+		cards[fmt.Sprintf("card%d", i+1)] = c
 	}
-	fmt.Println("--------------------------")
+	buf.WriteString("--------------------------")
+	n.EmitCards("community", "community", buf.String(), cards)
 }

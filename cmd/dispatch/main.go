@@ -15,11 +15,15 @@ import (
 func main() {
 	addr := flag.String("addr", ":9000", "dispatch listen address")
 	leaseTTL := flag.Duration("lease-ttl", 10*time.Second, "node lease TTL")
+	timeout := flag.Duration("timeout", 30*time.Second, "per-attempt deadline broadcast to sessions")
+	maxAttempts := flag.Uint("max-attempts", 3, "consecutive failed attempts before auto-fold")
 	flag.Parse()
 
 	srv, err := dispatch.NewServer(dispatch.Config{
-		Address:  *addr,
-		LeaseTTL: *leaseTTL,
+		Address:         *addr,
+		LeaseTTL:        *leaseTTL,
+		TimeoutInterval: *timeout,
+		MaxAttempts:     uint32(*maxAttempts),
 	})
 	if err != nil {
 		fmt.Printf("failed to build dispatch server: %v\n", err)
@@ -29,7 +33,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	fmt.Printf("dispatch listening on %s (lease ttl: %s)\n", *addr, leaseTTL.String())
+	fmt.Printf("dispatch listening on %s (lease ttl: %s, timeout: %s, max-attempts: %d)\n",
+		*addr, leaseTTL.String(), timeout.String(), *maxAttempts)
 	if err := srv.Run(ctx); err != nil {
 		fmt.Printf("dispatch server failed: %v\n", err)
 		os.Exit(1)

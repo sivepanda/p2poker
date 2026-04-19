@@ -8,12 +8,20 @@ import (
 	"math/big"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/sivepanda/p2poker/internal/crypto/deck"
 	"github.com/sivepanda/p2poker/internal/ephemeral"
 	"github.com/sivepanda/p2poker/internal/protocol"
 	"github.com/sivepanda/p2poker/internal/transport"
 )
+
+// SessionConfig holds game rules the dispatcher injects once per session via
+// the GameStart frame. Nodes cache these for the session's lifetime.
+type SessionConfig struct {
+	TimeoutInterval time.Duration
+	MaxAttempts     uint32
+}
 
 const (
 	KindPeerHandshake = "peer_handshake"
@@ -79,16 +87,20 @@ type Node struct {
 	prime  *big.Int
 
 	//GAME STATE
-	Started   bool
-	FinalDeck [][]byte
-	Order     []string
-	SeatIdx   int
-	card1     string
-	card2     string
-	money     int
+	Started       bool
+	FinalDeck     [][]byte
+	Order         []string
+	SeatIdx       int
+	card1         string
+	card2         string
+	money         int
+	sessionConfig SessionConfig
 
 	communityMu sync.RWMutex
 	community   []string
+
+	busMu sync.RWMutex
+	subs  map[chan Event]struct{}
 }
 
 // New constructs a node and starts its peer listener, but does NOT attach to a
@@ -258,6 +270,11 @@ func (n *Node) ID() string {
 // Money returns the node's starting chip count.
 func (n *Node) Money() int {
 	return n.money
+}
+
+// SessionConfig returns the rules received in GameStart. Zero value before GameStart.
+func (n *Node) SessionConfig() SessionConfig {
+	return n.sessionConfig
 }
 
 // SetPeerPK registers a peer's signing public key.

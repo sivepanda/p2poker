@@ -3,7 +3,7 @@ package game
 import "fmt"
 
 // State is the derived game state at a point in the log.
-// Computed by replaying entries — never stored or transmitted.
+// Computed by replaying entries: never stored or transmitted.
 type State struct {
 	Stacks        []uint64 // remaining chips per seat
 	Pot           uint64
@@ -87,7 +87,7 @@ func (s *State) ValidateAction(playerID uint8, action Action) error {
 		}
 		owed := s.CurrentBet - s.Contributions[playerID]
 		if owed == 0 {
-			return fmt.Errorf("nothing to call — use check")
+			return fmt.Errorf("nothing to call, use check")
 		}
 
 	case ActionRaise:

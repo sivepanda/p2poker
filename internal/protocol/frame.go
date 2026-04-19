@@ -38,4 +38,8 @@ type Frame struct {
 	SessionIDs       []string
 	LeaseExpiresUnix int64
 	PublicKey        []byte
+
+	// Session rules carried on KindGameStart. Zero otherwise.
+	TimeoutIntervalMS uint64
+	MaxAttempts       uint32
 }
