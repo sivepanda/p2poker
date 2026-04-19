@@ -162,13 +162,19 @@ func (n *Node) PrintCommunity() {
 
 	var buf strings.Builder
 	buf.WriteString("--------------------------\n")
-	fmt.Fprintf(&buf, "[%s] COMMUNITY CARDS\n", n.id)
+	_, err := fmt.Fprintf(&buf, "[%s] COMMUNITY CARDS\n", n.id)
+	if err != nil {
+		return
+	}
 	cards := make(map[string]string)
 	for i, c := range snapshot {
 		if c == "" {
 			break
 		}
-		fmt.Fprintf(&buf, "  Card %d: %s\n", i+1, c)
+		_, err := fmt.Fprintf(&buf, "  Card %d: %s\n", i+1, c)
+		if err != nil {
+			return
+		}
 		cards[fmt.Sprintf("card%d", i+1)] = c
 	}
 	buf.WriteString("--------------------------")

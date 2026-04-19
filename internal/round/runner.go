@@ -171,6 +171,8 @@ func (r *Runner) revealStreet(ctx context.Context, street game.Street) error {
 		return r.node.RevealTurn(ctx)
 	case game.StreetRiver:
 		return r.node.RevealRiver(ctx)
+	default:
+		panic("unhandled default case")
 	}
 	return nil
 }
