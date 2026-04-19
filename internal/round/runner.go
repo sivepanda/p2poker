@@ -133,26 +133,46 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.node.PrintCards()
 
-	// Seat 0 initiates the flop reveal once all hole cards are dealt.
-	if r.node.SeatIdx == 0 {
-		if err := r.node.RevealFlop(); err != nil {
-			return fmt.Errorf("reveal flop: %w", err)
-		}
-	}
-	for r.node.CommunityCount() < 3 {
-		time.Sleep(200 * time.Millisecond)
-	}
-	r.node.PrintCommunity()
-
 	//rounds
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+
+		preState := game.Replay(r.log.Entries(), r.log.NumPlayers(), r.log.StartingStack())
+		if preState.HandOver {
+			r.node.EmitKind("round", "runner",
+				"[%s] hand over (street %d, non-folded %d)",
+				r.node.ID(), preState.Street, preState.NumNonFolded())
+			return nil
+		}
+
 		if err := r.runRound(ctx); err != nil {
 			return fmt.Errorf("round %d: %w", r.log.RoundID(), err)
 		}
+
+		postState := game.Replay(r.log.Entries(), r.log.NumPlayers(), r.log.StartingStack())
+		if postState.Street != preState.Street {
+			if err := r.revealStreet(ctx, postState.Street); err != nil {
+				return fmt.Errorf("reveal street %d: %w", postState.Street, err)
+			}
+			r.node.PrintCommunity()
+		}
 	}
+}
+
+// revealStreet fires the per-street community reveal. Showdown and Preflop
+// have no community cards to reveal here (flop/turn/river only).
+func (r *Runner) revealStreet(ctx context.Context, street game.Street) error {
+	switch street {
+	case game.StreetFlop:
+		return r.node.RevealFlop(ctx)
+	case game.StreetTurn:
+		return r.node.RevealTurn(ctx)
+	case game.StreetRiver:
+		return r.node.RevealRiver(ctx)
+	}
+	return nil
 }
 
 // runRound drives a single round through up to MaxAttempts proposal attempts.

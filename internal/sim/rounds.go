@@ -213,7 +213,7 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		{Attempts: []game.Action{{Kind: game.ActionCall}}},
 		{Attempts: []game.Action{
 			{Kind: game.ActionRaise, Amount: 1_000_000}, // illegal
-			{Kind: game.ActionCall},                     // legal retry
+			{Kind: game.ActionCheck},                    // legal retry post-flop (CurrentBet reset)
 		}},
 		{Attempts: []game.Action{
 			{Kind: game.ActionRaise, Amount: 1_000_000},

@@ -42,6 +42,20 @@ func AutoFoldKey(roundID uint64, signerID string) string {
 	return fmt.Sprintf("auto_fold-%d-%s", roundID, signerID)
 }
 
+// CommunityRelayKey returns the canonical key for one seat's intermediate
+// SRA decrypt of a community card. Each seat in the ring hosts at its own
+// (cardIdx, seat) before the next seat polls and strips its layer.
+func CommunityRelayKey(cardIdx, seat int) string {
+	return fmt.Sprintf("community-relay-%d-%d", cardIdx, seat)
+}
+
+// CommunityCardKey returns the canonical key for the fully-decrypted
+// plaintext of a community card. Hosted by the last seat in the ring;
+// every peer polls it.
+func CommunityCardKey(cardIdx int) string {
+	return fmt.Sprintf("community-card-%d", cardIdx)
+}
+
 // AutoFoldPrefix returns the prefix shared by all auto-fold attestations for a
 // round, used for bulk cleanup on a later commit (same lagging pattern as
 // RoundPrefix does for verify receipts).

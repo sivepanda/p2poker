@@ -15,7 +15,7 @@ func main() {
 	dispatchAddr := flag.String("dispatch", "", "dispatch server address (required)")
 	numNodes := flag.Int("n", 4, "number of simulated nodes")
 	sessionID := flag.String("session", "sim-session", "session id to create/join")
-	numRounds := flag.Int("rounds", 3, "number of rounds to simulate")
+	numRounds := flag.Int("rounds", 5, "number of rounds to simulate")
 	rpcBaseAddr := flag.String("rpc-base-addr", "", "if set (e.g. 127.0.0.1:50051), starts a gRPC server per node at host:(port+i)")
 	flag.Parse()
 
