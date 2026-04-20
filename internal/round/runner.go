@@ -203,9 +203,8 @@ func (r *Runner) revealStreet(ctx context.Context, street game.Street) error {
 	case game.StreetRiver:
 		return r.node.RevealRiver(ctx)
 	default:
-		panic("unhandled default case")
+		return nil
 	}
-	return nil
 }
 
 // runRound drives a single round through up to MaxAttempts proposal attempts.
