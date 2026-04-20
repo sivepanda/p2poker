@@ -363,9 +363,22 @@ func driveScriptedRound(
 	start := time.Now()
 	events := make([]round.AttemptEvent, 0, len(attempts)+4)
 	submitted := 0
+	currentAttempt := uint32(0)
 	for {
 		if submitted < len(attempts) {
 			if err := r.SubmitAction(attempts[submitted]); err != nil {
+				if errors.Is(err, round.ErrIllegalAction) {
+					ev := round.AttemptEvent{
+						RoundID: uint64(roundID),
+						Attempt: currentAttempt,
+						Outcome: "rejected",
+						Reason:  err.Error(),
+					}
+					events = append(events, ev)
+					simLog("[sim] round %d attempt %d rejected: %s", roundID, currentAttempt, ev.Reason)
+					submitted++
+					continue
+				}
 				return roundReport{}, fmt.Errorf("round %d attempt %d submit: %w", roundID, submitted, err)
 			}
 			simLog("[sim] round %d attempt %d: proposer %s queued %v",
@@ -378,6 +391,11 @@ func driveScriptedRound(
 			return roundReport{}, err
 		}
 		events = append(events, ev)
+		if ev.Outcome == "timeout" {
+			currentAttempt = ev.Attempt + 1
+		} else {
+			currentAttempt = ev.Attempt
+		}
 		switch ev.Outcome {
 		case "committed":
 			simLog("[sim] round %d committed (attempt %d)", roundID, ev.Attempt)

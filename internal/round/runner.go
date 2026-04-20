@@ -46,6 +46,12 @@ const (
 	attemptTimeout                  // deadline or peer failure
 )
 
+var (
+	ErrNotYourTurn          = errors.New("not our turn")
+	ErrActionAlreadyPending = errors.New("action already pending")
+	ErrIllegalAction        = errors.New("illegal action")
+)
+
 // Runner orchestrates the propose/verify/commit lifecycle for one node.
 type Runner struct {
 	node  *peer.Node
@@ -103,13 +109,19 @@ func (r *Runner) Events() <-chan AttemptEvent {
 // SubmitAction queues an action for when it is this node's turn.
 func (r *Runner) SubmitAction(action game.Action) error {
 	if r.currentRole() != RoleProposer {
-		return errors.New("not our turn")
+		return ErrNotYourTurn
 	}
+
+	state := game.Replay(r.log.Entries(), r.log.NumPlayers(), r.log.StartingStack())
+	if err := state.ValidateAction(uint8(r.node.SeatIdx), action); err != nil {
+		return fmt.Errorf("%w: %v", ErrIllegalAction, err)
+	}
+
 	select {
 	case r.actionCh <- action:
 		return nil
 	default:
-		return errors.New("action already pending")
+		return ErrActionAlreadyPending
 	}
 }
 

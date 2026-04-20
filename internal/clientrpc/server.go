@@ -119,7 +119,14 @@ func (s *Server) SubmitAction(ctx context.Context, req *clientrpcpb.SubmitAction
 	}
 
 	if err := r.SubmitAction(game.Action{Kind: kind, Amount: req.Amount}); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, err.Error())
+		switch {
+		case errors.Is(err, round.ErrIllegalAction):
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, round.ErrNotYourTurn), errors.Is(err, round.ErrActionAlreadyPending):
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		default:
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
 	}
 	return &clientrpcpb.SubmitActionResponse{}, nil
 }
