@@ -142,9 +142,6 @@ func (s *Server) GetCards(ctx context.Context, req *clientrpcpb.GetCardsRequest)
 		hand = append(hand, c2)
 	}
 	community := s.node.CommunityCards()
-	if len(community) > 3 {
-		community = community[:3]
-	}
 	return &clientrpcpb.GetCardsResponse{Hand: hand, Flop: community}, nil
 }
 
