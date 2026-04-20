@@ -86,6 +86,9 @@ type Node struct {
 	modKey *deck.Key
 	prime  *big.Int
 
+	gameStartCh   chan struct{}
+	gameStartOnce sync.Once
+
 	//GAME STATE
 	Started       bool
 	FinalDeck     [][]byte
@@ -137,6 +140,8 @@ func New(cfg Config) (*Node, error) {
 		peerPKs:     make(map[string]ed25519.PublicKey),
 		modKey:      modKey,
 		prime:       PRIME,
+		gameStartCh: make(chan struct{}),
+		SeatIdx:     -1,
 	}
 
 	go n.acceptPeers()
@@ -250,6 +255,8 @@ func (n *Node) DetachDispatch() error {
 	n.session = ""
 	n.mu.Unlock()
 
+	n.resetGameState()
+
 	return closeErr
 }
 
@@ -269,12 +276,58 @@ func (n *Node) ID() string {
 
 // Money returns the node's starting chip count.
 func (n *Node) Money() int {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.money
 }
 
 // SessionConfig returns the rules received in GameStart. Zero value before GameStart.
 func (n *Node) SessionConfig() SessionConfig {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.sessionConfig
+}
+
+// GameStarted reports whether this node has processed GameStart.
+func (n *Node) GameStarted() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.Started
+}
+
+// SeatIndex returns this node's seat index for the current game.
+func (n *Node) SeatIndex() int {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.SeatIdx
+}
+
+// OrderSnapshot returns a copy of the current seating order.
+func (n *Node) OrderSnapshot() []string {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	out := make([]string, len(n.Order))
+	copy(out, n.Order)
+	return out
+}
+
+// WaitForGameStart blocks until GameStart is processed or ctx is done.
+func (n *Node) WaitForGameStart(ctx context.Context) error {
+	for {
+		n.mu.RLock()
+		if n.Started {
+			n.mu.RUnlock()
+			return nil
+		}
+		ch := n.gameStartCh
+		n.mu.RUnlock()
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ch:
+		}
+	}
 }
 
 // SetPeerPK registers a peer's signing public key.
@@ -333,4 +386,23 @@ func (n *Node) dispatchSend(frame protocol.Frame) error {
 		return errNotAttached
 	}
 	return conn.Send(frame)
+}
+
+func (n *Node) resetGameState() {
+	n.mu.Lock()
+	n.Started = false
+	n.FinalDeck = nil
+	n.Order = nil
+	n.SeatIdx = -1
+	n.card1 = ""
+	n.card2 = ""
+	n.money = 0
+	n.sessionConfig = SessionConfig{}
+	n.gameStartCh = make(chan struct{})
+	n.gameStartOnce = sync.Once{}
+	n.mu.Unlock()
+
+	n.communityMu.Lock()
+	n.community = nil
+	n.communityMu.Unlock()
 }

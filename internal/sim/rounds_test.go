@@ -13,8 +13,10 @@ func startDispatch(t *testing.T, ctx context.Context) string {
 	t.Helper()
 
 	srv, err := dispatch.NewServer(dispatch.Config{
-		Address:  "127.0.0.1:0",
-		LeaseTTL: 30 * time.Second,
+		Address:         "127.0.0.1:0",
+		LeaseTTL:        30 * time.Second,
+		TimeoutInterval: 3 * time.Second,
+		MaxAttempts:     3,
 	})
 	if err != nil {
 		t.Fatalf("new dispatch: %v", err)
@@ -36,8 +38,8 @@ func TestRunRounds(t *testing.T) {
 	cfg := sim.RoundsConfig{
 		DispatchAddr: dispatchAddr,
 		NumNodes:     4,
-		SessionID:    "rounds-test-session",
-		NumRounds:    3,
+		SessionID:    "rounds-sim",
+		NumRounds:    11,
 	}
 
 	if err := sim.RunRounds(ctx, cfg); err != nil {

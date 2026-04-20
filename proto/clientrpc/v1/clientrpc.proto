@@ -15,6 +15,12 @@ service PokerNode {
   rpc SubmitAction(SubmitActionRequest) returns (SubmitActionResponse);
   rpc GetCards(GetCardsRequest) returns (GetCardsResponse);
 
+  // Card decode + hand evaluation. Pure functions over the deck-int wire
+  // format; safe to call any time. Frontends use these instead of
+  // re-implementing suit/rank mapping or hand ranking.
+  rpc DescribeCards(DescribeCardsRequest) returns (DescribeCardsResponse);
+  rpc EvaluateHand(EvaluateHandRequest) returns (EvaluateHandResponse);
+
   // Node
   rpc GetNodeInfo(GetNodeInfoRequest) returns (GetNodeInfoResponse);
   rpc AttachDispatch(AttachDispatchRequest) returns (AttachDispatchResponse);
@@ -81,6 +87,40 @@ message GetCardsRequest {}
 message GetCardsResponse {
   repeated string hand = 1;
   repeated string flop = 2;
+}
+
+// CardInfo is the decoded form of one deck-int.
+//   suit: 0=Clubs, 1=Diamonds, 2=Hearts, 3=Spades
+//   rank: 0=Two, 1=Three, ..., 8=Ten, 9=Jack, 10=Queen, 11=King, 12=Ace
+message CardInfo {
+  int32 index = 1;       // 0..51
+  int32 suit = 2;
+  int32 rank = 3;
+  string short = 4;      // "AS"
+  string pretty = 5;     // "A\u2660"
+  string suit_name = 6;  // "Spades"
+  string rank_name = 7;  // "Ace"
+}
+
+message DescribeCardsRequest {
+  repeated string cards = 1; // deck-int strings (e.g. "0", "33")
+}
+message DescribeCardsResponse {
+  repeated CardInfo cards = 1;
+}
+
+// EvaluateHand ranks the strongest 5-card hand from 5..7 deck-int cards.
+message EvaluateHandRequest {
+  repeated string cards = 1; // 5..7 deck-int strings
+}
+message EvaluateHandResponse {
+  // category: 0=HighCard, 1=Pair, 2=TwoPair, 3=Trips, 4=Straight,
+  //           5=Flush, 6=FullHouse, 7=Quads, 8=StraightFlush
+  int32 category = 1;
+  string category_name = 2;     // "Full House"
+  string description = 3;       // "Full House, Aces full of Kings"
+  repeated int32 tiebreakers = 4; // most-significant first
+  repeated CardInfo best = 5;   // the 5 selected cards in display order
 }
 
 // --- Node ---

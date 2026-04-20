@@ -1,96 +1,109 @@
 package peer
 
 import (
+	"context"
 	"fmt"
+	"sync"
 
 	"github.com/sivepanda/p2poker/internal/crypto/deck"
+	"github.com/sivepanda/p2poker/internal/ephemeral"
 )
 
-const (
-	MsgDealRelay = "deal_relay"
-)
-
-type DealRelayMessage struct {
-	CardIdx     int    // Index in the FinalDeck
-	CurrentData []byte // The card data as it stands after partial decryptions
-	RequesterID string // Who originally asked for the card
-}
-
-// InitDealHandlers registers the sequential ring-relay logic for dealing.
-func (n *Node) InitDealHandlers() {
-	n.Handle(MsgDealRelay, func(msg Message) {
-		req, err := Decode[DealRelayMessage](msg)
-		if err != nil {
-			return
-		}
-
-		// 1. Strip our layer of encryption
-		decryptedData := deck.DecryptCard(req.CurrentData, n.modKey, n.prime)
-
-		//MINE
-		if req.RequesterID == n.ID() {
-			if n.card1 == "" {
-				n.card1 = string(decryptedData)
-			} else {
-				n.card2 = string(decryptedData)
+// DealHoleCards runs the pull-based hole deal across all slots in parallel.
+func (n *Node) DealHoleCards(ctx context.Context) error {
+	numSlots := len(n.Order) * 2
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		firstErr error
+	)
+	for slot := range numSlots {
+		wg.Go(func() {
+			if err := n.dealHoleSlot(ctx, slot); err != nil {
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = err
+				}
+				mu.Unlock()
 			}
-			return
-		}
-
-		// 2. Determine who is next in the ring
-		nextIdx := (n.SeatIdx + 1) % len(n.Order)
-		nextID := n.Order[nextIdx]
-
-		// Forward the relay
-		_ = n.Send(nextID, MsgDealRelay, DealRelayMessage{
-			CardIdx:     req.CardIdx,
-			CurrentData: decryptedData,
-			RequesterID: req.RequesterID,
 		})
-	})
+	}
+	wg.Wait()
+	return firstErr
 }
 
-// RequestCards starts the ring relay for the node's two hole cards.
-// This version assumes the final decryption is handled by the receiver
-// logic when the relay completes the circle.
-func (n *Node) RequestCards() error {
-	// Go loop for: Seat 0 (0,1), Seat 1 (2,3), etc.
-	start := n.SeatIdx * 2
-	end := start + 2
-
-	for cardIdx := start; cardIdx < end; cardIdx++ {
-		if len(n.FinalDeck) <= cardIdx {
-			return fmt.Errorf("card index %d out of bounds", cardIdx)
-		}
-
-		// Identify the next player in the ring
-		nextIdx := (n.SeatIdx + 1) % len(n.Order)
-		nextID := n.Order[nextIdx]
-
-		n.EmitKind("deal", "deal", "[%s] Starting ring relay for card %d -> sending to %s", n.id, cardIdx, nextID)
-
-		// Sending the raw ciphertext; your handler will strip your layer
-		// when this message eventually loops back to you.
-		err := n.Send(nextID, MsgDealRelay, DealRelayMessage{
-			CardIdx:     cardIdx,
-			CurrentData: n.FinalDeck[cardIdx],
-			RequesterID: n.id,
-		})
-
-		if err != nil {
-			return fmt.Errorf("failed to start relay for card %d: %w", cardIdx, err)
-		}
+// dealHoleSlot strips one slot through the non-owner ring; owner pulls last.
+func (n *Node) dealHoleSlot(ctx context.Context, slot int) error {
+	if slot < 0 || slot >= len(n.FinalDeck) {
+		return fmt.Errorf("slot %d out of bounds", slot)
+	}
+	ownerSeat := slot / 2
+	if ownerSeat >= len(n.Order) {
+		return fmt.Errorf("slot %d has no owner seat", slot)
+	}
+	ring := nonOwnerRing(len(n.Order), ownerSeat)
+	if len(ring) == 0 {
+		return fmt.Errorf("empty ring for slot %d", slot)
 	}
 
+	if n.SeatIdx == ownerSeat {
+		lastStripper := ring[len(ring)-1]
+		lastID := n.Order[lastStripper]
+		key := ephemeral.HoleRelayKey(slot, lastStripper)
+		data, err := n.PollRemote(ctx, lastID, key)
+		if err != nil {
+			return fmt.Errorf("poll hole relay (slot %d): %w", slot, err)
+		}
+		plaintext := deck.DecryptCard(data, n.modKey, n.prime)
+		n.setHole(slot, string(plaintext))
+		return nil
+	}
+
+	ringIdx := ringPosition(ring, n.SeatIdx)
+	if ringIdx < 0 {
+		return fmt.Errorf("seat %d not in ring for slot %d", n.SeatIdx, slot)
+	}
+
+	var layered []byte
+	if ringIdx == 0 {
+		layered = n.FinalDeck[slot]
+	} else {
+		prevSeat := ring[ringIdx-1]
+		prevID := n.Order[prevSeat]
+		data, err := n.PollRemote(ctx, prevID, ephemeral.HoleRelayKey(slot, prevSeat))
+		if err != nil {
+			return fmt.Errorf("poll hole relay (slot %d, stripper %d): %w", slot, prevSeat, err)
+		}
+		layered = data
+	}
+	stripped := deck.DecryptCard(layered, n.modKey, n.prime)
+	n.store.Put(ephemeral.HoleRelayKey(slot, n.SeatIdx), stripped)
 	return nil
+}
+
+func nonOwnerRing(numPlayers, ownerSeat int) []int {
+	out := make([]int, 0, numPlayers-1)
+	for i := range numPlayers {
+		if i != ownerSeat {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+func ringPosition(ring []int, seat int) int {
+	for i, s := range ring {
+		if s == seat {
+			return i
+		}
+	}
+	return -1
 }
 
 func (n *Node) NoCardsYet() bool {
 	return n.card1 == "" || n.card2 == ""
 }
 
-// HoleCards returns this node's two hole cards. Either may be empty if the
-// deal relay has not yet completed.
 func (n *Node) HoleCards() (string, string) {
 	return n.card1, n.card2
 }
@@ -100,11 +113,19 @@ func (n *Node) PrintCards() {
 		n.EmitKind("deal", "deal", "[%s] Hole Cards: [Waiting for deal...]", n.id)
 		return
 	}
-
 	msg := fmt.Sprintf("--------------------------\n[%s] YOUR HAND\nCard 1: %s\nCard 2: %s\n--------------------------",
 		n.id, n.card1, n.card2)
 	n.EmitCards("deal", "deal", msg, map[string]string{
 		"hole1": n.card1,
 		"hole2": n.card2,
 	})
+}
+
+// setHole writes plaintext for our slot. 2*owner is card1; 2*owner+1 is card2.
+func (n *Node) setHole(slot int, card string) {
+	if slot%2 == 0 {
+		n.card1 = card
+	} else {
+		n.card2 = card
+	}
 }

@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/sivepanda/p2poker/internal/card"
 	"github.com/sivepanda/p2poker/internal/clientrpc/clientrpcpb"
 	"github.com/sivepanda/p2poker/internal/game"
 	"github.com/sivepanda/p2poker/internal/peer"
@@ -138,6 +139,58 @@ func (s *Server) GetCards(ctx context.Context, req *clientrpcpb.GetCardsRequest)
 		community = community[:3]
 	}
 	return &clientrpcpb.GetCardsResponse{Hand: hand, Flop: community}, nil
+}
+
+// DescribeCards decodes deck-int wire strings into structured suit/rank info.
+func (s *Server) DescribeCards(ctx context.Context, req *clientrpcpb.DescribeCardsRequest) (*clientrpcpb.DescribeCardsResponse, error) {
+	cards, err := card.ParseDeckStrings(req.Cards)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	out := make([]*clientrpcpb.CardInfo, len(cards))
+	for i, c := range cards {
+		out[i] = cardInfo(c)
+	}
+	return &clientrpcpb.DescribeCardsResponse{Cards: out}, nil
+}
+
+// EvaluateHand ranks the strongest 5-card hand out of 5..7 deck-int cards.
+func (s *Server) EvaluateHand(ctx context.Context, req *clientrpcpb.EvaluateHandRequest) (*clientrpcpb.EvaluateHandResponse, error) {
+	cards, err := card.ParseDeckStrings(req.Cards)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	hr, err := card.Best(cards)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	tb := make([]int32, 0, 5)
+	for _, r := range hr.Tiebreakers {
+		tb = append(tb, int32(r))
+	}
+	best := make([]*clientrpcpb.CardInfo, 5)
+	for i, c := range hr.Best {
+		best[i] = cardInfo(c)
+	}
+	return &clientrpcpb.EvaluateHandResponse{
+		Category:     int32(hr.Category),
+		CategoryName: hr.Category.String(),
+		Description:  hr.Describe(),
+		Tiebreakers:  tb,
+		Best:         best,
+	}, nil
+}
+
+func cardInfo(c card.Card) *clientrpcpb.CardInfo {
+	return &clientrpcpb.CardInfo{
+		Index:    int32(c.Int()),
+		Suit:     int32(c.Suit),
+		Rank:     int32(c.Rank),
+		Short:    c.Short(),
+		Pretty:   c.Pretty(),
+		SuitName: c.Suit.Name(),
+		RankName: c.Rank.Name(),
+	}
 }
 
 // GetNodeInfo "forwards" incoming gRPC request to internal ListSessions, which returns basic identities for the node.

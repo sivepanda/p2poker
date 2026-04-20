@@ -27,6 +27,8 @@ const (
 	PokerNode_StartGame_FullMethodName       = "/clientrpc.v1.PokerNode/StartGame"
 	PokerNode_SubmitAction_FullMethodName    = "/clientrpc.v1.PokerNode/SubmitAction"
 	PokerNode_GetCards_FullMethodName        = "/clientrpc.v1.PokerNode/GetCards"
+	PokerNode_DescribeCards_FullMethodName   = "/clientrpc.v1.PokerNode/DescribeCards"
+	PokerNode_EvaluateHand_FullMethodName    = "/clientrpc.v1.PokerNode/EvaluateHand"
 	PokerNode_GetNodeInfo_FullMethodName     = "/clientrpc.v1.PokerNode/GetNodeInfo"
 	PokerNode_AttachDispatch_FullMethodName  = "/clientrpc.v1.PokerNode/AttachDispatch"
 	PokerNode_DetachDispatch_FullMethodName  = "/clientrpc.v1.PokerNode/DetachDispatch"
@@ -47,6 +49,11 @@ type PokerNodeClient interface {
 	// Gameplay
 	SubmitAction(ctx context.Context, in *SubmitActionRequest, opts ...grpc.CallOption) (*SubmitActionResponse, error)
 	GetCards(ctx context.Context, in *GetCardsRequest, opts ...grpc.CallOption) (*GetCardsResponse, error)
+	// Card decode + hand evaluation. Pure functions over the deck-int wire
+	// format; safe to call any time. Frontends use these instead of
+	// re-implementing suit/rank mapping or hand ranking.
+	DescribeCards(ctx context.Context, in *DescribeCardsRequest, opts ...grpc.CallOption) (*DescribeCardsResponse, error)
+	EvaluateHand(ctx context.Context, in *EvaluateHandRequest, opts ...grpc.CallOption) (*EvaluateHandResponse, error)
 	// Node
 	GetNodeInfo(ctx context.Context, in *GetNodeInfoRequest, opts ...grpc.CallOption) (*GetNodeInfoResponse, error)
 	AttachDispatch(ctx context.Context, in *AttachDispatchRequest, opts ...grpc.CallOption) (*AttachDispatchResponse, error)
@@ -143,6 +150,26 @@ func (c *pokerNodeClient) GetCards(ctx context.Context, in *GetCardsRequest, opt
 	return out, nil
 }
 
+func (c *pokerNodeClient) DescribeCards(ctx context.Context, in *DescribeCardsRequest, opts ...grpc.CallOption) (*DescribeCardsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeCardsResponse)
+	err := c.cc.Invoke(ctx, PokerNode_DescribeCards_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pokerNodeClient) EvaluateHand(ctx context.Context, in *EvaluateHandRequest, opts ...grpc.CallOption) (*EvaluateHandResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EvaluateHandResponse)
+	err := c.cc.Invoke(ctx, PokerNode_EvaluateHand_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *pokerNodeClient) GetNodeInfo(ctx context.Context, in *GetNodeInfoRequest, opts ...grpc.CallOption) (*GetNodeInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetNodeInfoResponse)
@@ -206,6 +233,11 @@ type PokerNodeServer interface {
 	// Gameplay
 	SubmitAction(context.Context, *SubmitActionRequest) (*SubmitActionResponse, error)
 	GetCards(context.Context, *GetCardsRequest) (*GetCardsResponse, error)
+	// Card decode + hand evaluation. Pure functions over the deck-int wire
+	// format; safe to call any time. Frontends use these instead of
+	// re-implementing suit/rank mapping or hand ranking.
+	DescribeCards(context.Context, *DescribeCardsRequest) (*DescribeCardsResponse, error)
+	EvaluateHand(context.Context, *EvaluateHandRequest) (*EvaluateHandResponse, error)
 	// Node
 	GetNodeInfo(context.Context, *GetNodeInfoRequest) (*GetNodeInfoResponse, error)
 	AttachDispatch(context.Context, *AttachDispatchRequest) (*AttachDispatchResponse, error)
@@ -245,6 +277,12 @@ func (UnimplementedPokerNodeServer) SubmitAction(context.Context, *SubmitActionR
 }
 func (UnimplementedPokerNodeServer) GetCards(context.Context, *GetCardsRequest) (*GetCardsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCards not implemented")
+}
+func (UnimplementedPokerNodeServer) DescribeCards(context.Context, *DescribeCardsRequest) (*DescribeCardsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DescribeCards not implemented")
+}
+func (UnimplementedPokerNodeServer) EvaluateHand(context.Context, *EvaluateHandRequest) (*EvaluateHandResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EvaluateHand not implemented")
 }
 func (UnimplementedPokerNodeServer) GetNodeInfo(context.Context, *GetNodeInfoRequest) (*GetNodeInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetNodeInfo not implemented")
@@ -423,6 +461,42 @@ func _PokerNode_GetCards_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PokerNode_DescribeCards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeCardsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PokerNodeServer).DescribeCards(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PokerNode_DescribeCards_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PokerNodeServer).DescribeCards(ctx, req.(*DescribeCardsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PokerNode_EvaluateHand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EvaluateHandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PokerNodeServer).EvaluateHand(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PokerNode_EvaluateHand_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PokerNodeServer).EvaluateHand(ctx, req.(*EvaluateHandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PokerNode_GetNodeInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetNodeInfoRequest)
 	if err := dec(in); err != nil {
@@ -526,6 +600,14 @@ var PokerNode_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCards",
 			Handler:    _PokerNode_GetCards_Handler,
+		},
+		{
+			MethodName: "DescribeCards",
+			Handler:    _PokerNode_DescribeCards_Handler,
+		},
+		{
+			MethodName: "EvaluateHand",
+			Handler:    _PokerNode_EvaluateHand_Handler,
 		},
 		{
 			MethodName: "GetNodeInfo",

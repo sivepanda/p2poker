@@ -32,10 +32,6 @@ type RoundsConfig struct {
 	RPCBaseAddr string
 }
 
-// RunRounds attaches NumNodes peer nodes to an already-running dispatch at
-// DispatchAddr, forms a mesh inside SessionID, waits for dispatch to push
-// game_start, and runs NumRounds of the propose/verify/commit lifecycle
-// with each round's proposer submitting a Check action.
 func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 	if cfg.DispatchAddr == "" {
 		return errors.New("dispatch address required")
@@ -143,22 +139,10 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		return startGameErr
 	}
 	simLog("[sim] game_start received, order: %v", order)
-	// Wait until every node has processed game_start and populated Order.
-	for {
-		allStarted := true
-		for _, n := range nodes {
-			if !n.Started {
-				allStarted = false
-				break
-			}
-		}
-		if allStarted {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(10 * time.Millisecond):
+	// Wait until every node has processed game_start and published runtime state.
+	for _, n := range nodes {
+		if err := n.WaitForGameStart(ctx); err != nil {
+			return err
 		}
 	}
 
@@ -203,9 +187,18 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		}
 	}
 
-	// Per-round attempt scripts. Each script's Attempts are consumed in order,
-	// one per proposer attempt. Illegal attempts drive the retry / auto-fold
-	// flow:  verify end-to-end that the runner reacts correctly.
+	sessionCfg := nodes[0].SessionConfig()
+	timeoutInterval := sessionCfg.TimeoutInterval
+	if timeoutInterval <= 0 {
+		timeoutInterval = 30 * time.Second
+	}
+	maxAttempts := sessionCfg.MaxAttempts
+	if maxAttempts == 0 {
+		maxAttempts = 3
+	}
+
+	// Per-round scripts for the proposer. A script can also assert exact
+	// per-attempt event sequences to validate attempt-counter behavior.
 	scripts := []roundScript{
 		{Attempts: []game.Action{{Kind: game.ActionRaise, Amount: 100}}},
 		{Attempts: []game.Action{{Kind: game.ActionFold}}},
@@ -213,13 +206,22 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 		{Attempts: []game.Action{{Kind: game.ActionCall}}},
 		{Attempts: []game.Action{
 			{Kind: game.ActionRaise, Amount: 1_000_000}, // illegal
+			{Kind: game.ActionRaise, Amount: 1_000_000}, // illegal again (same attempt)
+			{Kind: game.ActionRaise, Amount: 1_000_000}, // illegal again (same attempt)
 			{Kind: game.ActionCheck},                    // legal retry post-flop (CurrentBet reset)
+		}, ExpectedEvents: []expectedEvent{
+			{Attempt: 0, Outcome: "rejected"},
+			{Attempt: 0, Outcome: "rejected"},
+			{Attempt: 0, Outcome: "rejected"},
+			{Attempt: 0, Outcome: "committed"},
 		}},
 		{Attempts: []game.Action{
-			{Kind: game.ActionRaise, Amount: 1_000_000},
-			{Kind: game.ActionRaise, Amount: 1_000_000},
-			{Kind: game.ActionRaise, Amount: 1_000_000},
-		}, ExpectAutoFold: true},
+			{Kind: game.ActionRaise, Amount: 1_000_000}, // one bad action, then stall
+		}, ExpectAutoFold: true,
+			ExpectedEvents:      expectedAutoFoldEvents(maxAttempts, true),
+			ExpectedDurationMin: timeoutInterval * time.Duration(maxAttempts) / 2,
+			ExpectedDurationMax: timeoutInterval*time.Duration(maxAttempts) + 2*time.Second,
+		},
 	}
 
 	numRounds := cfg.NumRounds
@@ -250,15 +252,26 @@ func RunRounds(ctx context.Context, cfg RoundsConfig) error {
 			return fmt.Errorf("round %d proposer %s not local", r, proposerID)
 		}
 
-		outcome, err := driveScriptedRound(runCtx, runners[localIdx], nodes, r, proposerID, scripts[r].Attempts)
+		report, err := driveScriptedRound(runCtx, runners[localIdx], nodes, r, proposerID, scripts[r].Attempts)
 		if err != nil {
 			return err
 		}
-		if scripts[r].ExpectAutoFold && outcome != "auto_fold" {
-			return fmt.Errorf("round %d expected auto_fold, got %s", r, outcome)
+		if scripts[r].ExpectAutoFold && report.Outcome != "auto_fold" {
+			return fmt.Errorf("round %d expected auto_fold, got %s", r, report.Outcome)
 		}
-		if !scripts[r].ExpectAutoFold && outcome != "committed" {
-			return fmt.Errorf("round %d expected committed, got %s", r, outcome)
+		if !scripts[r].ExpectAutoFold && report.Outcome != "committed" {
+			return fmt.Errorf("round %d expected committed, got %s", r, report.Outcome)
+		}
+		if len(scripts[r].ExpectedEvents) > 0 {
+			if err := verifyExpectedEvents(report.Events, scripts[r].ExpectedEvents); err != nil {
+				return fmt.Errorf("round %d event sequence mismatch: %w", r, err)
+			}
+		}
+		if scripts[r].ExpectedDurationMin > 0 && report.Duration < scripts[r].ExpectedDurationMin {
+			return fmt.Errorf("round %d completed too quickly: got %s, want >= %s", r, report.Duration, scripts[r].ExpectedDurationMin)
+		}
+		if scripts[r].ExpectedDurationMax > 0 && report.Duration > scripts[r].ExpectedDurationMax {
+			return fmt.Errorf("round %d took too long: got %s, want <= %s", r, report.Duration, scripts[r].ExpectedDurationMax)
 		}
 
 		for _, rn := range runners {
@@ -312,10 +325,25 @@ func parseRPCBase(addr string) (string, int, error) {
 type roundScript struct {
 	Attempts       []game.Action
 	ExpectAutoFold bool
+	ExpectedEvents []expectedEvent
+
+	ExpectedDurationMin time.Duration
+	ExpectedDurationMax time.Duration
 }
 
-// driveScriptedRound submits scripted actions to the proposer one attempt at a
-// time, advancing on each rejected/timeout event. Returns the terminal outcome.
+type expectedEvent struct {
+	Attempt uint32
+	Outcome string
+}
+
+type roundReport struct {
+	Outcome  string
+	Events   []round.AttemptEvent
+	Duration time.Duration
+}
+
+// driveScriptedRound submits scripted actions to the proposer and returns the
+// terminal outcome plus the full event stream observed for that round.
 func driveScriptedRound(
 	ctx context.Context,
 	r *round.Runner,
@@ -323,7 +351,7 @@ func driveScriptedRound(
 	roundID int,
 	proposerID string,
 	attempts []game.Action,
-) (string, error) {
+) (roundReport, error) {
 	simLog := func(format string, args ...any) {
 		msg := fmt.Sprintf(format, args...)
 		fmt.Println(msg)
@@ -332,11 +360,13 @@ func driveScriptedRound(
 		}
 	}
 
+	start := time.Now()
+	events := make([]round.AttemptEvent, 0, len(attempts)+4)
 	submitted := 0
 	for {
 		if submitted < len(attempts) {
 			if err := r.SubmitAction(attempts[submitted]); err != nil {
-				return "", fmt.Errorf("round %d attempt %d submit: %w", roundID, submitted, err)
+				return roundReport{}, fmt.Errorf("round %d attempt %d submit: %w", roundID, submitted, err)
 			}
 			simLog("[sim] round %d attempt %d: proposer %s queued %v",
 				roundID, submitted, proposerID, attempts[submitted])
@@ -345,20 +375,45 @@ func driveScriptedRound(
 
 		ev, err := nextRoundEvent(ctx, r, uint64(roundID))
 		if err != nil {
-			return "", err
+			return roundReport{}, err
 		}
+		events = append(events, ev)
 		switch ev.Outcome {
 		case "committed":
 			simLog("[sim] round %d committed (attempt %d)", roundID, ev.Attempt)
-			return "committed", nil
+			return roundReport{Outcome: "committed", Events: events, Duration: time.Since(start)}, nil
 		case "auto_fold":
 			simLog("[sim] round %d AUTO-FOLD", roundID)
-			return "auto_fold", nil
+			return roundReport{Outcome: "auto_fold", Events: events, Duration: time.Since(start)}, nil
 		case "rejected", "timeout":
 			simLog("[sim] round %d attempt %d %s: %s",
 				roundID, ev.Attempt, ev.Outcome, ev.Reason)
 		}
 	}
+}
+
+func verifyExpectedEvents(got []round.AttemptEvent, want []expectedEvent) error {
+	if len(got) != len(want) {
+		return fmt.Errorf("got %d events, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i].Attempt != want[i].Attempt || got[i].Outcome != want[i].Outcome {
+			return fmt.Errorf("event %d: got (%d,%s), want (%d,%s)", i, got[i].Attempt, got[i].Outcome, want[i].Attempt, want[i].Outcome)
+		}
+	}
+	return nil
+}
+
+func expectedAutoFoldEvents(maxAttempts uint32, includeInitialReject bool) []expectedEvent {
+	out := make([]expectedEvent, 0, int(maxAttempts)+2)
+	if includeInitialReject {
+		out = append(out, expectedEvent{Attempt: 0, Outcome: "rejected"})
+	}
+	for a := uint32(0); a < maxAttempts; a++ {
+		out = append(out, expectedEvent{Attempt: a, Outcome: "timeout"})
+	}
+	out = append(out, expectedEvent{Attempt: 0, Outcome: "auto_fold"})
+	return out
 }
 
 // nextRoundEvent drains events until one matches target. Stale events (from

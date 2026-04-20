@@ -56,6 +56,21 @@ func CommunityCardKey(cardIdx int) string {
 	return fmt.Sprintf("community-card-%d", cardIdx)
 }
 
+// ShuffleStepKey is one seat's shuffle+encrypt output in the ring.
+func ShuffleStepKey(seat int) string {
+	return fmt.Sprintf("shuffle-step-%d", seat)
+}
+
+// HoleRelayKey is one stripper's intermediate SRA decrypt for a hole slot.
+func HoleRelayKey(slot, stripperSeat int) string {
+	return fmt.Sprintf("hole-relay-%d-%d", slot, stripperSeat)
+}
+
+// ShowdownClaimKey carries one seat's hole plaintexts + SRA inverse exponent.
+func ShowdownClaimKey(seat int) string {
+	return fmt.Sprintf("showdown-claim-%d", seat)
+}
+
 // AutoFoldPrefix returns the prefix shared by all auto-fold attestations for a
 // round, used for bulk cleanup on a later commit (same lagging pattern as
 // RoundPrefix does for verify receipts).

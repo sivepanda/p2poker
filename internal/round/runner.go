@@ -75,7 +75,8 @@ func New(
 	if cfg.MaxAttempts == 0 {
 		cfg.MaxAttempts = 3
 	}
-	gameLog := game.NewLog(uint8(len(node.Order)), uint64(node.Money()))
+	order := node.OrderSnapshot()
+	gameLog := game.NewLog(uint8(len(order)), uint64(node.Money()))
 
 	return &Runner{
 		node:     node,
@@ -114,22 +115,15 @@ func (r *Runner) SubmitAction(action game.Action) error {
 
 // Run starts the round lifecycle loop. Blocks until ctx is cancelled.
 func (r *Runner) Run(ctx context.Context) error {
-	for r.node.Started == false {
-		time.Sleep(200 * time.Millisecond)
-	}
-	//before rounds
-	err := r.node.StartShuffle()
-	if err != nil {
+	if err := r.node.WaitForGameStart(ctx); err != nil {
 		return err
 	}
 
-	for r.node.FinalDeck == nil {
-		time.Sleep(200 * time.Millisecond)
+	if err := r.node.RunShuffle(ctx); err != nil {
+		return fmt.Errorf("shuffle: %w", err)
 	}
-
-	err = r.node.RequestCards()
-	for r.node.NoCardsYet() {
-		time.Sleep(200 * time.Millisecond)
+	if err := r.node.DealHoleCards(ctx); err != nil {
+		return fmt.Errorf("deal: %w", err)
 	}
 	r.node.PrintCards()
 
@@ -144,6 +138,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.node.EmitKind("round", "runner",
 				"[%s] hand over (street %d, non-folded %d)",
 				r.node.ID(), preState.Street, preState.NumNonFolded())
+			if err := r.finishHand(ctx, preState); err != nil {
+				return fmt.Errorf("finish hand: %w", err)
+			}
 			return nil
 		}
 
@@ -159,6 +156,28 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.node.PrintCommunity()
 		}
 	}
+}
+
+// finishHand runs showdown when ≥2 seats remain, else emits uncontested winner.
+func (r *Runner) finishHand(ctx context.Context, state game.State) error {
+	if state.NumNonFolded() <= 1 {
+		winner := -1
+		for i, f := range state.Folded {
+			if !f {
+				winner = i
+				break
+			}
+		}
+		r.node.EmitFields("showdown", "runner",
+			fmt.Sprintf("[%s] uncontested winner seat %d", r.node.ID(), winner),
+			map[string]string{
+				"winner": fmt.Sprintf("%d", winner),
+				"reason": "uncontested",
+			})
+		return nil
+	}
+	_, err := r.node.RunShowdown(ctx, state.Folded)
+	return err
 }
 
 // revealStreet fires the per-street community reveal. Showdown and Preflop

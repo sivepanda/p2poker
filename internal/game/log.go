@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 
 	cryptolog "github.com/sivepanda/p2poker/internal/crypto/log"
 )
@@ -78,6 +79,7 @@ func (e Entry) Bytes() []byte {
 }
 
 type Log struct {
+	mu            sync.RWMutex
 	entries       []Entry
 	numPlayers    uint8
 	startingStack uint64
@@ -92,6 +94,8 @@ func NewLog(numPlayers uint8, startingStack uint64) *Log {
 
 // RoundID == len(entries); the round the next proposer signs under.
 func (l *Log) RoundID() uint64 {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	return uint64(len(l.entries))
 }
 
@@ -113,6 +117,8 @@ func (l *Log) Hash() []byte {
 // entry 0, folds, dealer button, street). Streets are
 // not yet modeled; folds are.
 func (l *Log) ExpectedNextPlayer() uint8 {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if l.numPlayers == 0 {
 		return 0
 	}
@@ -141,6 +147,8 @@ func (l *Log) StartingStack() uint64 {
 
 // Entries returns a copy of the log entries.
 func (l *Log) Entries() []Entry {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	out := make([]Entry, len(l.entries))
 	copy(out, l.entries)
 	return out
@@ -148,11 +156,15 @@ func (l *Log) Entries() []Entry {
 
 // Append adds e without verification. Caller must have verified first.
 func (l *Log) Append(e Entry) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.entries = append(l.entries, e)
 }
 
 // RollbackLast drops the last entry. Used on round abort.
 func (l *Log) RollbackLast() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if len(l.entries) > 0 {
 		l.entries = l.entries[:len(l.entries)-1]
 	}
@@ -246,6 +258,8 @@ func (l *Log) AppendAutoFold(e Entry, pks map[uint8]ed25519.PublicKey) error {
 	if err := l.VerifyAutoFoldEntry(e, pks); err != nil {
 		return err
 	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.entries = append(l.entries, e)
 	return nil
 }

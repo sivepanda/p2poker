@@ -9,37 +9,46 @@ import (
 )
 
 func (n *Node) GameStart(frame protocol.Frame) {
-	n.Order = frame.PeerIDs
-	for i, id := range n.Order {
-		if id == n.id {
-			n.SeatIdx = i
+	order := make([]string, len(frame.PeerIDs))
+	copy(order, frame.PeerIDs)
+
+	myID := n.ID()
+	seatIdx := -1
+	for i, id := range order {
+		if id == myID {
+			seatIdx = i
 			break
 		}
 	}
+
+	n.mu.Lock()
+	n.Order = order
+	n.SeatIdx = seatIdx
 	n.sessionConfig = SessionConfig{
 		TimeoutInterval: time.Duration(frame.TimeoutIntervalMS) * time.Millisecond,
 		MaxAttempts:     frame.MaxAttempts,
 	}
 	n.Started = true
 	n.money = 2000
+	n.mu.Unlock()
+
+	n.gameStartOnce.Do(func() {
+		close(n.gameStartCh)
+	})
 
 	n.EmitFields("game_start", "game",
-		fmt.Sprintf("[%s] GAME START", n.id),
+		fmt.Sprintf("[%s] GAME START", myID),
 		map[string]string{
 			"session_id": frame.SessionID,
-			"order":      strings.Join(n.Order, ","),
-			"my_seat":    fmt.Sprintf("%d", n.SeatIdx),
+			"order":      strings.Join(order, ","),
+			"my_seat":    fmt.Sprintf("%d", seatIdx),
 		})
 
 	if n.onGameStart != nil {
-		go n.onGameStart(frame.SessionID, n.Order)
+		go n.onGameStart(frame.SessionID, order)
 	}
 
-	//Init handlers
 	n.InitEphemeralHandlers()
-	n.InitShuffleHandlers()
-	n.InitDealHandlers()
-
 }
 
 //TODO: Move runner logic in here
