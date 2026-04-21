@@ -40,10 +40,11 @@ var ErrAlreadyAttached = errors.New("node already attached to dispatch")
 var errNotAttached = errors.New("node not attached to dispatch")
 
 type Config struct {
-	DispatchAddr string
-	PeerAddr     string
-	NodeID       string
-	PublicKey    ed25519.PublicKey
+	DispatchAddr  string
+	PeerAddr      string
+	AdvertiseAddr string
+	NodeID        string
+	PublicKey     ed25519.PublicKey
 }
 
 type Node struct {
@@ -121,6 +122,12 @@ func New(cfg Config) (*Node, error) {
 		return nil, fmt.Errorf("peer listen: %w", err)
 	}
 
+	advertise, err := resolveAdvertiseAddr(cfg.AdvertiseAddr, ln.Addr().String())
+	if err != nil {
+		_ = ln.Close()
+		return nil, fmt.Errorf("resolve advertise addr: %w", err)
+	}
+
 	modKey, err := deck.GenerateKey(PRIME)
 	if err != nil {
 		_ = ln.Close()
@@ -128,7 +135,7 @@ func New(cfg Config) (*Node, error) {
 	}
 
 	n := &Node{
-		peerAddr:    ln.Addr().String(),
+		peerAddr:    advertise,
 		prefNodeID:  cfg.NodeID,
 		listener:    ln,
 		peers:       make(map[string]*transport.GobConn),
@@ -365,6 +372,30 @@ func (n *Node) Store() *ephemeral.Store {
 func (n *Node) SetGameStartHandler(fn func(sessionID string, order []string)) {
 	n.onGameStart = fn
 
+}
+
+// resolveAdvertiseAddr returns the address peers should dial to reach this node.
+// either set with advertise or detected with a dummy dial.
+func resolveAdvertiseAddr(advertise, listenAddr string) (string, error) {
+	if advertise != "" {
+		return advertise, nil
+	}
+	_, port, err := net.SplitHostPort(listenAddr)
+	if err != nil {
+		return "", fmt.Errorf("parse listen addr: %w", err)
+	}
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return listenAddr, nil // fall back to wildcard if detection fails
+	}
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+
+		}
+	}(conn)
+	ip := conn.LocalAddr().(*net.UDPAddr).IP.String()
+	return net.JoinHostPort(ip, port), nil
 }
 
 // Close kills the node and its network resources.

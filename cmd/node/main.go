@@ -18,6 +18,7 @@ import (
 func main() {
 	dispatchAddr := flag.String("dispatch", "", "dispatch server address (optional; if empty, attach via gRPC AttachDispatch)")
 	peerAddr := flag.String("peer-addr", ":0", "peer listen address")
+	peerAdvertise := flag.String("peer-advertise", "", "address advertised to peers (default: auto-detect outbound LAN IP)")
 	nodeID := flag.String("id", "", "node id (optional)")
 	rpcAddr := flag.String("rpc-addr", "127.0.0.1:50051", "gRPC listen address for frontend clients (set empty to disable)")
 	flag.Parse()
@@ -33,9 +34,10 @@ func main() {
 	}
 
 	node, err := peer.New(peer.Config{
-		PeerAddr:  *peerAddr,
-		NodeID:    *nodeID,
-		PublicKey: pk,
+		PeerAddr:      *peerAddr,
+		AdvertiseAddr: *peerAdvertise,
+		NodeID:        *nodeID,
+		PublicKey:     pk,
 	})
 	if err != nil {
 		fmt.Printf("node init failed: %v\n", err)
