@@ -117,6 +117,13 @@ func (s *Store) DeletePrefix(prefix string) {
 	}
 }
 
+// Clear removes all keys from the store.
+func (s *Store) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data = make(map[string][]byte)
+}
+
 // Keys returns all current keys.
 func (s *Store) Keys() []string {
 	s.mu.RLock()

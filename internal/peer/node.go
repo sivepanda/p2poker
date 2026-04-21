@@ -405,4 +405,6 @@ func (n *Node) resetGameState() {
 	n.communityMu.Lock()
 	n.community = nil
 	n.communityMu.Unlock()
+
+	n.store.Clear()
 }
