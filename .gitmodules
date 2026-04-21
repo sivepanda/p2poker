@@ -1,3 +1,4 @@
 [submodule "p2hosts"]
 	path = p2hosts
 	url = git@github.com:sivepanda/p2hosts.git
+	branch = main
